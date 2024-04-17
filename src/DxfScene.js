@@ -82,7 +82,6 @@ function hexToDecimal(hex) {
  * transfer it to the main thread, and easily apply it to a Three.js scene there.
  */
 export class DxfScene {
-
     constructor(options) {
         this.colorOverrides = {}
         this.n = 0
@@ -175,12 +174,6 @@ export class DxfScene {
                 this.inserts.set(entity.handle, entity)
                 const block = this.blocks.get(entity.name)
                 block?.RegisterInsert(entity)
-
-                if (!this.unmappedInserts[entity.handle]) {
-                    this.unmappedInserts[entity.handle] = []
-                }
-
-                this.unmappedInserts[entity.handle].push(entity)
             } else if (entity.type == "DIMENSION") {
                 if ((entity.block ?? null) !== null) {
                     const block = this.blocks.get(entity.block)
@@ -194,11 +187,20 @@ export class DxfScene {
                 continue;
             }
 
-            for (const entity of block.data.entities) {
-                this._scanEntity(entity)
-            }
-            // block.ResolveReferences(this.blocks)
+            this.scanEntities(block.data.entities)
         }
+        
+
+        // for (const block of this.blocks.values()) {
+        //     if (!block?.data?.entities) {
+        //         continue;
+        //     }
+
+        //     for (const entity of block.data.entities) {
+        //         this.scanEntity(entity)
+        //     }
+        //     // block.ResolveReferences(this.blocks)
+        // }
 
         console.log('>>> ')
 
@@ -231,7 +233,7 @@ export class DxfScene {
 
         delete this.batches
         delete this.layers
-        delete this.blocks
+        // delete this.blocks
         delete this.textRenderer
     }
 
@@ -240,27 +242,77 @@ export class DxfScene {
         return !this.options.suppressPaperSpace || !entity.inPaperSpace
     }
 
-    _scanEntity(entity, same = false, insertName = null) {
+    addColor(entityHandle, color) {
+        try {
+            for (const block of this.blocks.values()) {
+                if (block.data.hasOwnProperty("entities")) {
+                    for (const entity of block.data.entities) {
+                        if (entity.handle === entityHandle) {
+                            console.log('entity', Object.keys(entity))
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.log('error', error)
+        }
+    }
+
+    scanEntities(entities) {
+        for (const entity of entities) {
+            const entityName = entity.name
+            
+            if (entity.type === 'INSERT') {
+                if(entityName?.includes?.('DGLM')) {
+                    const block = this.blocks.get(entity.name);
+
+                    if (!block?.data?.entities) {
+                        continue;
+                    }
+                    
+                    for (const entity of block.data.entities) {
+                        entity.color = hexToDecimal('#FF0000')
+                    }
+                }
+
+                const block = this.blocks.get(entity.name);
+                const entities = block?.data?.entities;
+
+                if (!entities) {
+                    continue;
+                }
+
+                this.scanEntities(entities);
+            }
+        }
+    }
+
+    scanEntity(entity, same = false, insertName = null) {
         try {
             const entityName = entity.name
             let isDLGM = false
             let isTheSame = false
+
+            // if (entity.type === 'INSERT') {
+            //     this.unmappedInserts[entity.handle] = {
+            //         handle: entity.handle,
+            //         ownerHandle: entity.ownerHandle,
+            //     }
+            // }
 
             if (!entityName) {
                 return;
             }
 
             if (same && insertName) {
-                this.colorOverrides[insertname] = this.colorOverrides[insertName] ?? hexToDecimal('#FF0000')
-                return;
+                // this.colorOverrides[insertname] = this.colorOverrides[insertName] ?? hexToDecimal('#FF0000')
+                entity.color = hexToDecimal('#FF0000')
             }
 
             if (entityName.includes('DGLM')) {
                 isDLGM = true
 
-                if (!this.colorOverrides[entity.handle]) {
-                    this.colorOverrides[entity.handle] = hexToDecimal('#FF0000')
-                }
+                entity.color = hexToDecimal('#FF0000')
             }
 
             if (entity.type === 'INSERT') {
@@ -268,13 +320,15 @@ export class DxfScene {
 
                 if (block?.data?.entities) {
                     for (const entity of block.data.entities) {
-                        this._scanEntity(entity, isDLGM, entity.handle)
+                        this.scanEntity(entity, isDLGM, entity.handle)
                     }
                 }
             }
         } catch (error) {
             console.log('error', error)
         }
+
+        return null
         
 
         // if (!entityName) {
@@ -2086,15 +2140,68 @@ export class DxfScene {
         chunk.Finish()
     }
 
+    _IsInsert(ownerHandle) {
+        const blocks = new Map(this.blocks)
+
+        console.log('ownerHandle', ownerHandle)
+
+        for (const block of blocks.values()) {
+            if (!block?.data?.entities) {
+                continue;
+            }
+
+            for (const entity of block.data.entities) {
+                if (entity.handle === ownerHandle) {
+                    // console.log('entity', entity)
+                    return true
+                }
+            }
+        }
+
+        return false
+        // console.log('blocks', blocks.values())
+    }
+
     _GetParentInsert(entity, blockCtx, isInsert) {
         const cloneBlock = {...blockCtx}
         const entities = cloneBlock?.block?.data?.entities;
 
-        if (entity.type === 'INSERT') {
-            // const parentEntity = entities.find((e) => e.handle === entity.ownerHandle)
-            console.log('cloneBlock', Object.keys(entity))
+        if (entity.type === 'INSERT' || isInsert) {
+            const parentIsInsert = this._IsInsert(entity.ownerHandle)
 
-            return entity
+            if (parentIsInsert) {
+                return this._GetParentInsert(entity, cloneBlock, true)
+            } else {
+                return entity
+            }
+
+            // console.log('parentIsInsert', parentIsInsert)
+            // const parentEntity = entities.find((e) => e.handle === entity.ownerHandle)
+            // const parentIsInsert = this.unmappedInserts[entity.ownerHandle]
+            // try {
+            //     const parentEntity = inserts.get(entity.ownerHandle)
+
+            //     console.log('inserts', entity.ownerHandle, inserts)
+
+            //     if (parentEntity) {
+            //         console.log('WOW')
+            //         return this._GetParentInsert(parentEntity, cloneBlock, true, inserts)
+            //     } else {
+            //         return entity
+            //     }
+            // } catch (error) {
+            //     console.log('error', error)
+            // }
+            
+            
+
+            // if (parentIsInsert) {
+            //     console.log('parentIsInsert', parentIsInsert)
+            //     return this._GetParentInsert(entity, cloneBlock, true)
+            // } else {
+            //     return entity
+            // }
+
             // if (parentEntity.type === 'INSERT') {
             //     return this._GetParentInsert(parentEntity, blockCtx, true)
             // } else {
@@ -2131,11 +2238,17 @@ export class DxfScene {
      *  which are resolved on block instantiation.
      */
     _GetEntityColor(entity, blockCtx = null) {
-        const parentInsert = this._GetParentInsert(entity, blockCtx)
+        // Clone this.inserts
+        const parentInsert = this._GetParentInsert(entity, blockCtx, false)
 
         if (parentInsert) {
-            console.log('ADD COLOR', parentInsert.handle, Object.keys(this.colorOverrides))
+            // console.log('parentInsert', parentInsert.handle, Object.keys(this.colorOverrides).includes(parentInsert.handle))
+            // console.log('ADD COLOR', parentInsert.handle, Object.keys(this.colorOverrides))
             // return this._GetEntityColor(parentInsert, blockCtx)
+        }
+
+        if (this.n === 0) {
+            this.n = 1;
         }
         
         if (entity.ownerHandle) {
