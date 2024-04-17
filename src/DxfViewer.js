@@ -442,6 +442,8 @@ export class DxfViewer {
             canvasCoord,
             position: this._CanvasToSceneCoord(canvasCoord.x, canvasCoord.y)
         })
+
+        console.log('position', this._CanvasToSceneCoord(canvasCoord.x, canvasCoord.y))
     }
 
     /** @return {{x,y}} Scene coordinate corresponding to the specified canvas pixel coordinates. */

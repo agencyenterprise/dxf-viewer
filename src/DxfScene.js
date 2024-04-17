@@ -64,6 +64,19 @@ const DEFAULT_VARS = {
     DIMZIN: 8, //XXX 0 for imperial,
 }
 
+function hexToDecimal(hex) {
+    // Remove the leading # if it exists
+    hex = hex.replace('#', '');
+    
+    // Parse the hex string into RGB components
+    let r = parseInt(hex.substring(0, 2), 16);
+    let g = parseInt(hex.substring(2, 4), 16);
+    let b = parseInt(hex.substring(4, 6), 16);
+    
+    // Combine the components into a single decimal value
+    return (r * 256 * 256) + (g * 256) + b;
+}
+
 /** This class prepares an internal representation of a DXF file, optimized fo WebGL rendering. It
  * is decoupled in such a way so that it should be possible to build it in a web-worker, effectively
  * transfer it to the main thread, and easily apply it to a Three.js scene there.
@@ -71,6 +84,8 @@ const DEFAULT_VARS = {
 export class DxfScene {
 
     constructor(options) {
+        this.colorOverrides = {}
+        this.n = 0
         this.options = Object.create(DxfScene.DefaultOptions)
         if (options) {
             Object.assign(this.options, options.sceneOptions)
@@ -97,6 +112,7 @@ export class DxfScene {
         this.pointShapeBlock = null
         this.numBlocksFlattened = 0
         this.numEntitiesFiltered = 0
+        this.unmappedInserts = {}
     }
 
     /** Build the scene from the provided parsed DXF.
@@ -160,6 +176,11 @@ export class DxfScene {
                 const block = this.blocks.get(entity.name)
                 block?.RegisterInsert(entity)
 
+                if (!this.unmappedInserts[entity.handle]) {
+                    this.unmappedInserts[entity.handle] = []
+                }
+
+                this.unmappedInserts[entity.handle].push(entity)
             } else if (entity.type == "DIMENSION") {
                 if ((entity.block ?? null) !== null) {
                     const block = this.blocks.get(entity.block)
@@ -167,6 +188,19 @@ export class DxfScene {
                 }
             }
         }
+
+        for (const block of this.blocks.values()) {
+            if (!block?.data?.entities) {
+                continue;
+            }
+
+            for (const entity of block.data.entities) {
+                this._scanEntity(entity)
+            }
+            // block.ResolveReferences(this.blocks)
+        }
+
+        console.log('>>> ')
 
         for (const block of this.blocks.values()) {
             if (block.data.hasOwnProperty("entities")) {
@@ -204,6 +238,68 @@ export class DxfScene {
     /** @return False to suppress the specified entity, true to permit rendering. */
     _FilterEntity(entity) {
         return !this.options.suppressPaperSpace || !entity.inPaperSpace
+    }
+
+    _scanEntity(entity, same = false, insertName = null) {
+        try {
+            const entityName = entity.name
+            let isDLGM = false
+            let isTheSame = false
+
+            if (!entityName) {
+                return;
+            }
+
+            if (same && insertName) {
+                this.colorOverrides[insertname] = this.colorOverrides[insertName] ?? hexToDecimal('#FF0000')
+                return;
+            }
+
+            if (entityName.includes('DGLM')) {
+                isDLGM = true
+
+                if (!this.colorOverrides[entity.handle]) {
+                    this.colorOverrides[entity.handle] = hexToDecimal('#FF0000')
+                }
+            }
+
+            if (entity.type === 'INSERT') {
+                const block = this.blocks.get(entity.name)
+
+                if (block?.data?.entities) {
+                    for (const entity of block.data.entities) {
+                        this._scanEntity(entity, isDLGM, entity.handle)
+                    }
+                }
+            }
+        } catch (error) {
+            console.log('error', error)
+        }
+        
+
+        // if (!entityName) {
+        //     return;
+        // }
+
+        // if (entityName.includes('DGLM')) {
+        //     const block = this.blocks.get(entity.name)
+
+        //     isDLGM = true
+
+        //     if (!this.colorOverrides[entity.handle]) {
+        //         this.colorOverrides[entity.handle] = hexToDecimal('#FF0000')
+        //     }
+        // }
+
+        // if (entity.type === 'INSERT') {
+        //     const block = this.blocks.get(entity.name)
+
+        //     if (block?.data?.entities) {
+        //         for (const entity of block.data.entities) {
+        //             this._scanEntity(entity, isDLGM, entity.handle)
+        //         }
+        //     }
+        // }
     }
 
     async _FetchFonts(dxf) {
@@ -1415,6 +1511,15 @@ export class DxfScene {
      * @param blockCtx {?BlockContext} Nested block insert when non-null.
      */
     _ProcessInsert(entity, blockCtx = null) {
+        let isDLGM = false
+        let isTheSame = false
+
+        if (entity.name.includes('DGLM')) {
+            isDLGM = true
+            // console.log(Object.keys(entity))
+            // console.log(entity.position.x, entity.position.y)
+        }
+
         if (blockCtx) {
             //XXX handle indirect recursion
             if (blockCtx.name === entity.name) {
@@ -1430,6 +1535,16 @@ export class DxfScene {
             const nestedCtx = blockCtx.NestedBlockContext(block, entity)
             if (block.data.entities) {
                 for (const entity of block.data.entities) {
+                    if (isDLGM && entity.type === 'LWPOLYLINE') {
+                        for (const vertex of entity.vertices) {
+                            if (vertex.x === 238.8000060429244 && vertex.y === -214.7800469213055) {
+                                isTheSame = true
+                                break;
+                            }
+                            
+                        }
+                    }
+                    
                     this._ProcessDxfEntity(entity, nestedCtx)
                 }
             }
@@ -1437,6 +1552,7 @@ export class DxfScene {
         }
 
         const block = this.blocks.get(entity.name)
+
         if (!block) {
             console.warn("Unresolved block reference in INSERT: " + entity.name)
             return
@@ -1970,6 +2086,43 @@ export class DxfScene {
         chunk.Finish()
     }
 
+    _GetParentInsert(entity, blockCtx, isInsert) {
+        const cloneBlock = {...blockCtx}
+        const entities = cloneBlock?.block?.data?.entities;
+
+        if (entity.type === 'INSERT') {
+            // const parentEntity = entities.find((e) => e.handle === entity.ownerHandle)
+            console.log('cloneBlock', Object.keys(entity))
+
+            return entity
+            // if (parentEntity.type === 'INSERT') {
+            //     return this._GetParentInsert(parentEntity, blockCtx, true)
+            // } else {
+            //     return parentEntity
+            // }
+        }
+        
+        if (!entities) {
+            return null
+        }
+
+        try {
+            const parentEntity = entities.find((e) => e.handle === entity.ownerHandle)
+
+            if (!parentEntity) {
+                return null
+            } else {
+                if (parentEntity.type === 'INSERT') {
+                    return parentEntity
+                } else {
+                    return this._GetParentInsert(parentEntity, cloneBlock)
+                }
+            }
+        } catch(error) {
+            console.log(error)
+        }
+    }
+
     /** Resolve entity color.
      *
      * @param entity
@@ -1978,6 +2131,51 @@ export class DxfScene {
      *  which are resolved on block instantiation.
      */
     _GetEntityColor(entity, blockCtx = null) {
+        const parentInsert = this._GetParentInsert(entity, blockCtx)
+
+        if (parentInsert) {
+            console.log('ADD COLOR', parentInsert.handle, Object.keys(this.colorOverrides))
+            // return this._GetEntityColor(parentInsert, blockCtx)
+        }
+        
+        if (entity.ownerHandle) {
+            if (this.n === 0) {
+                
+                // for (const handle of Object.keys(this.unmappedInserts)) {
+                //     const insert = this.unmappedInserts[handle]
+                //     const matches =JSON.stringify(insert).indexOf(entity.ownerHandle) !== -1
+
+                //     if (matches) {
+                //         console.log
+                //     }
+                // }
+                // console.log('colorOverrides', Object.keys(this.colorOverrides))
+                // console.log('has ownerHandle', Object.keys(this.colorOverrides).includes(entity.ownerHandle))
+                // console.log('ownerHandle', entity.ownerHandle)
+                // this.n = 1
+            }
+            
+            const insertEntity = this.inserts.get(entity.ownerHandle)
+            
+            if (insertEntity && this.n === 0) {
+                console.log(Object.keys(insertEntity))
+
+                this.n = 1
+            }
+
+            if (insertEntity?.handle) {
+                console.log('exists', Object.keys(this.colorOverrides).contains(insertEntity.handle))
+            }
+
+            // if (this.n === 0) {
+            //     console.log('insertEntity', insertEntity.ownerHandle)
+            //     this.n = 1
+            // }
+
+            // return this.colorOverrides[insertEntity.handle]
+        }
+    
+
         let color = ColorCode.BY_LAYER
         if (entity.colorIndex === 0) {
             color = ColorCode.BY_BLOCK
