@@ -10,6 +10,8 @@ import { HatchCalculator, HatchStyle } from "./HatchCalculator"
 import { LookupPattern, Pattern } from "./Pattern"
 import "./patterns"
 
+import { instance } from "./instance" 
+
 
 /** Use 16-bit indices for indexed geometry. */
 const INDEXED_CHUNK_SIZE = 0x10000
@@ -83,6 +85,7 @@ function hexToDecimal(hex) {
  */
 export class DxfScene {
     constructor(options) {
+        this.instance = null
         this.colorOverrides = {}
         this.n = 0
         this.options = Object.create(DxfScene.DefaultOptions)
@@ -258,32 +261,113 @@ export class DxfScene {
         }
     }
 
-    scanEntities(entities) {
+    extractInstances(entities) {
+        const regex = /\d+/g;
+        const handledInstances = []
+        // const mappingKeys = ['center', 'end', 'location', 'start', 'controlPoints', 'vertices']
         for (const entity of entities) {
-            const entityName = entity.name
+            const numbers = JSON.stringify(entity).match(regex).map(Number);
             
-            if (entity.type === 'INSERT') {
-                if(entityName?.includes?.('DGLM')) {
-                    const block = this.blocks.get(entity.name);
+            // const keysPresentOnMappingKeys = mappingKeys.filter(key => entity[key]);
+            // // const entityWithKeysOnly = Object.keys(entity).filter(key => mappingKeys.includes(key));
+            // const handledEntity = {};
 
-                    if (!block?.data?.entities) {
+            // for (const key of keysPresentOnMappingKeys) {
+            //     handledEntity[key] = entity[key]
+            //     // handledEntity[key] = entity[key]
+            // }
+
+            handledInstances.push([...numbers])
+
+            // handledInstances.push(handledEntity)
+            // console.log('keysPresentOnMappingKeys', keysPresentOnMappingKeys)
+        }
+        
+        return [handledInstances.length, ...handledInstances]
+    }
+
+    scanEntities(entities, parentName = '') {
+        // if (entities.length === 1) {
+        //     console.log('just one', entities[0].type)
+        // }
+        const instanceTotalSize = instance[0]
+
+        try {
+            for (const entity of entities) {
+                const entityName = entity.name
+                
+                if (entity.type === 'INSERT') {
+                    // if(entityName?.includes?.('DGLM')) {
+                    //     const block = this.blocks.get(entity.name);
+    
+                    //     if (!block?.data?.entities) {
+                    //         continue;
+                    //     }
+    
+                    //     console.log('is equal', JSON.stringify(block.data.entities) === JSON.stringify(instance))
+                        
+                    //     for (const entity of block.data.entities) {
+                    //         entity.color = hexToDecimal('#00FF00')
+                    //     }
+                    // }
+    
+                    const block = this.blocks.get(entity.name);
+                    const entities = block?.data?.entities;
+    
+                    if (!entities) {
                         continue;
                     }
-                    
-                    for (const entity of block.data.entities) {
-                        entity.color = hexToDecimal('#FF0000')
+
+                    // if (entityName?.toLowerCase().includes?.('sen ousby ch')) {
+                    //     const extractedInstances = this.extractInstances(entities)
+                    //     const slicedInstances = extractedInstances.slice(0, 6)
+
+                    //     console.log(JSON.stringify(slicedInstances))
+                    // }
+    
+                    this.scanEntities(entities, entity.name);
+                }
+    
+                if (parentName) {
+                    const block = this.blocks.get(parentName);
+                    const insertEntities = block?.data?.entities;
+                    let isMatching = false
+
+                    if (!insertEntities) {
+                        continue;
                     }
+
+                    if (insertEntities.length === instanceTotalSize) {
+                        const extractedInstances = this.extractInstances(insertEntities)
+                        const slicedInstances = extractedInstances.slice(0, 6)
+                        
+
+                        if (JSON.stringify(slicedInstances) === JSON.stringify(instance)) {
+                            console.log('is matching!!!')
+                            
+                            insertEntities.forEach((insertEntity, index) => {
+                                insertEntity.color = hexToDecimal('#FF0000')
+                            });
+                        }
+                        // isMatching = JSON.stringify(insertEntities) === JSON.stringify(instance);
+
+                        // // console.log(JSON.stringify(insertEntities[0]))
+                        // // console.log(JSON.stringify(instance[0]))
+                        
+                        // if (isMatching) {
+                        //     insertEntities.forEach((insertEntity, index) => {
+                        //         insertEntity.color = hexToDecimal('#FF0000')
+                        //     });
+                        // }
+                    }
+
+                    // if (isMatching) {
+                    //     entity.color = hexToDecimal('#FF0000')
+                    // }
                 }
-
-                const block = this.blocks.get(entity.name);
-                const entities = block?.data?.entities;
-
-                if (!entities) {
-                    continue;
-                }
-
-                this.scanEntities(entities);
             }
+        } catch (error) {
+            console.log('error', error)
         }
     }
 
