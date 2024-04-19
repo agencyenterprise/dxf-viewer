@@ -10,7 +10,25 @@ import { HatchCalculator, HatchStyle } from "./HatchCalculator"
 import { LookupPattern, Pattern } from "./Pattern"
 import "./patterns"
 
-import { instance } from "./instance" 
+import { instance1, instance2 } from "./instances" 
+
+const instances = [
+    {
+        // orange
+        color: '#FFA500',
+        instance: instance1
+    },
+    {
+        // Color: bright pink
+        color: '#FF007F',
+        instance: instance2
+    },
+    {
+        // Color: bright green
+        color: '#00FF00',
+        instance: instance2
+    }
+]
 
 
 /** Use 16-bit indices for indexed geometry. */
@@ -282,7 +300,7 @@ export class DxfScene {
             // handledInstances.push(handledEntity)
             // console.log('keysPresentOnMappingKeys', keysPresentOnMappingKeys)
         }
-        
+
         return [handledInstances.length, ...handledInstances]
     }
 
@@ -290,13 +308,29 @@ export class DxfScene {
         // if (entities.length === 1) {
         //     console.log('just one', entities[0].type)
         // }
-        const instanceTotalSize = instance[0]
 
         try {
             for (const entity of entities) {
                 const entityName = entity.name
                 
                 if (entity.type === 'INSERT') {
+                    if (entityName?.toLowerCase?.()?.includes?.('executive')) {
+                        console.log('found one', entityName)
+                    }
+
+                    if (entityName?.toLowerCase?.()?.includes?.('ousby ch 1')) {
+                        const block = this.blocks.get(entity.name);
+                        const entities = block?.data?.entities;
+
+                        if (!entities) {
+                            continue;
+                        }
+
+                        const extractedInstances = this.extractInstances(entities)
+
+                        // console.log(JSON.stringify(extractedInstances.splice(0, 6)))
+                    }
+
                     // if(entityName?.includes?.('DGLM')) {
                     //     const block = this.blocks.get(entity.name);
     
@@ -317,13 +351,6 @@ export class DxfScene {
                     if (!entities) {
                         continue;
                     }
-
-                    // if (entityName?.toLowerCase().includes?.('sen ousby ch')) {
-                    //     const extractedInstances = this.extractInstances(entities)
-                    //     const slicedInstances = extractedInstances.slice(0, 6)
-
-                    //     console.log(JSON.stringify(slicedInstances))
-                    // }
     
                     this.scanEntities(entities, entity.name);
                 }
@@ -337,29 +364,32 @@ export class DxfScene {
                         continue;
                     }
 
-                    if (insertEntities.length === instanceTotalSize) {
-                        const extractedInstances = this.extractInstances(insertEntities)
-                        const slicedInstances = extractedInstances.slice(0, 6)
-                        
+                    for (const { color, instance } of instances) {
+                        const instanceTotalSize = instance[0]
 
-                        if (JSON.stringify(slicedInstances) === JSON.stringify(instance)) {
-                            console.log('is matching!!!')
+                        if (insertEntities.length === instanceTotalSize) {
+                            const extractedInstances = this.extractInstances(insertEntities)
+                            const slicedInstances = extractedInstances.slice(0, 6)
                             
-                            insertEntities.forEach((insertEntity, index) => {
-                                insertEntity.color = hexToDecimal('#FF0000')
-                            });
+                            if (JSON.stringify(slicedInstances) === JSON.stringify(instance)) {
+                                insertEntities.forEach((insertEntity, index) => {
+                                    insertEntity.color = hexToDecimal(color)
+                                });
+                            }
+                            // isMatching = JSON.stringify(insertEntities) === JSON.stringify(instance);
+    
+                            // // console.log(JSON.stringify(insertEntities[0]))
+                            // // console.log(JSON.stringify(instance[0]))
+                            
+                            // if (isMatching) {
+                            //     insertEntities.forEach((insertEntity, index) => {
+                            //         insertEntity.color = hexToDecimal('#FF0000')
+                            //     });
+                            // }
                         }
-                        // isMatching = JSON.stringify(insertEntities) === JSON.stringify(instance);
-
-                        // // console.log(JSON.stringify(insertEntities[0]))
-                        // // console.log(JSON.stringify(instance[0]))
-                        
-                        // if (isMatching) {
-                        //     insertEntities.forEach((insertEntity, index) => {
-                        //         insertEntity.color = hexToDecimal('#FF0000')
-                        //     });
-                        // }
                     }
+
+                    
 
                     // if (isMatching) {
                     //     entity.color = hexToDecimal('#FF0000')
@@ -545,9 +575,15 @@ export class DxfScene {
             this._ProcessInsert(entity, blockCtx)
             return
         case "TEXT":
+            if (entity.text.includes('RECEPTION')) {
+                console.log(entity.position, entity.height, entity.width)
+            }
             renderEntities = this._DecomposeText(entity, blockCtx)
             break
         case "MTEXT":
+            if (entity.text.includes('RECEPTION')) {
+                console.log(entity.position, entity.height, entity.width)
+            }
             renderEntities = this._DecomposeMText(entity, blockCtx)
             break
         case "3DFACE":
@@ -623,7 +659,7 @@ export class DxfScene {
             type: Entity.Type.LINE_SEGMENTS,
             vertices: entity.vertices,
             layer, color,
-            lineType: this._GetLineType(entity, entity.vertices[0])
+            lineType: this._GetLineType(entity, entity.vertices[0]),
         })
     }
 
@@ -2246,74 +2282,6 @@ export class DxfScene {
         // console.log('blocks', blocks.values())
     }
 
-    _GetParentInsert(entity, blockCtx, isInsert) {
-        const cloneBlock = {...blockCtx}
-        const entities = cloneBlock?.block?.data?.entities;
-
-        if (entity.type === 'INSERT' || isInsert) {
-            const parentIsInsert = this._IsInsert(entity.ownerHandle)
-
-            if (parentIsInsert) {
-                return this._GetParentInsert(entity, cloneBlock, true)
-            } else {
-                return entity
-            }
-
-            // console.log('parentIsInsert', parentIsInsert)
-            // const parentEntity = entities.find((e) => e.handle === entity.ownerHandle)
-            // const parentIsInsert = this.unmappedInserts[entity.ownerHandle]
-            // try {
-            //     const parentEntity = inserts.get(entity.ownerHandle)
-
-            //     console.log('inserts', entity.ownerHandle, inserts)
-
-            //     if (parentEntity) {
-            //         console.log('WOW')
-            //         return this._GetParentInsert(parentEntity, cloneBlock, true, inserts)
-            //     } else {
-            //         return entity
-            //     }
-            // } catch (error) {
-            //     console.log('error', error)
-            // }
-            
-            
-
-            // if (parentIsInsert) {
-            //     console.log('parentIsInsert', parentIsInsert)
-            //     return this._GetParentInsert(entity, cloneBlock, true)
-            // } else {
-            //     return entity
-            // }
-
-            // if (parentEntity.type === 'INSERT') {
-            //     return this._GetParentInsert(parentEntity, blockCtx, true)
-            // } else {
-            //     return parentEntity
-            // }
-        }
-        
-        if (!entities) {
-            return null
-        }
-
-        try {
-            const parentEntity = entities.find((e) => e.handle === entity.ownerHandle)
-
-            if (!parentEntity) {
-                return null
-            } else {
-                if (parentEntity.type === 'INSERT') {
-                    return parentEntity
-                } else {
-                    return this._GetParentInsert(parentEntity, cloneBlock)
-                }
-            }
-        } catch(error) {
-            console.log(error)
-        }
-    }
-
     /** Resolve entity color.
      *
      * @param entity
@@ -2323,81 +2291,38 @@ export class DxfScene {
      */
     _GetEntityColor(entity, blockCtx = null) {
         // Clone this.inserts
-        const parentInsert = this._GetParentInsert(entity, blockCtx, false)
 
-        if (parentInsert) {
-            // console.log('parentInsert', parentInsert.handle, Object.keys(this.colorOverrides).includes(parentInsert.handle))
-            // console.log('ADD COLOR', parentInsert.handle, Object.keys(this.colorOverrides))
-            // return this._GetEntityColor(parentInsert, blockCtx)
-        }
-
-        if (this.n === 0) {
-            this.n = 1;
-        }
-        
-        if (entity.ownerHandle) {
-            if (this.n === 0) {
-                
-                // for (const handle of Object.keys(this.unmappedInserts)) {
-                //     const insert = this.unmappedInserts[handle]
-                //     const matches =JSON.stringify(insert).indexOf(entity.ownerHandle) !== -1
-
-                //     if (matches) {
-                //         console.log
-                //     }
-                // }
-                // console.log('colorOverrides', Object.keys(this.colorOverrides))
-                // console.log('has ownerHandle', Object.keys(this.colorOverrides).includes(entity.ownerHandle))
-                // console.log('ownerHandle', entity.ownerHandle)
-                // this.n = 1
-            }
-            
-            const insertEntity = this.inserts.get(entity.ownerHandle)
-            
-            if (insertEntity && this.n === 0) {
-                console.log(Object.keys(insertEntity))
-
-                this.n = 1
-            }
-
-            if (insertEntity?.handle) {
-                console.log('exists', Object.keys(this.colorOverrides).contains(insertEntity.handle))
-            }
-
-            // if (this.n === 0) {
-            //     console.log('insertEntity', insertEntity.ownerHandle)
-            //     this.n = 1
-            // }
-
-            // return this.colorOverrides[insertEntity.handle]
-        }
-    
-
-        let color = ColorCode.BY_LAYER
-        if (entity.colorIndex === 0) {
-            color = ColorCode.BY_BLOCK
-        } else if (entity.colorIndex === 256) {
-            color = ColorCode.BY_LAYER
-        } else if (entity.hasOwnProperty("color")) {
-            color = entity.color
-        }
-
-        if (blockCtx) {
-            return color
-        }
-        if (color === ColorCode.BY_LAYER || color === ColorCode.BY_BLOCK) {
-            /* BY_BLOCK is not useful when not in block so replace it by layer as well. */
-            if (entity.hasOwnProperty("layer")) {
-                const layer = this.layers.get(entity.layer)
-                if (layer) {
-                    return layer.color
-                }
-            }
+        if (entity.hasOwnProperty('color')) {
+            return entity.color
         } else {
-            return color
+            return 0
         }
-        /* Fallback to black. */
-        return 0
+
+        // let color = ColorCode.BY_LAYER
+        // if (entity.colorIndex === 0) {
+        //     color = ColorCode.BY_BLOCK
+        // } else if (entity.colorIndex === 256) {
+        //     color = ColorCode.BY_LAYER
+        // } else if (entity.hasOwnProperty("color")) {
+        //     color = entity.color
+        // }
+
+        // if (blockCtx) {
+        //     return color
+        // }
+        // if (color === ColorCode.BY_LAYER || color === ColorCode.BY_BLOCK) {
+        //     /* BY_BLOCK is not useful when not in block so replace it by layer as well. */
+        //     if (entity.hasOwnProperty("layer")) {
+        //         const layer = this.layers.get(entity.layer)
+        //         if (layer) {
+        //             return layer.color
+        //         }
+        //     }
+        // } else {
+        //     return color
+        // }
+        // /* Fallback to black. */
+        // return 0
     }
 
     /** @return {?string} Layer name, null for block entity. */
