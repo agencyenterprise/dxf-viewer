@@ -11,6 +11,7 @@ import { LookupPattern, Pattern } from "./Pattern"
 import "./patterns"
 
 import { instance1, instance2 } from "./instances" 
+import * as THREE from 'three'
 
 const instances = [
     {
@@ -133,6 +134,9 @@ export class DxfScene {
         this.numBlocksFlattened = 0
         this.numEntitiesFiltered = 0
         this.unmappedInserts = {}
+
+        // Get THREE renderer
+        console.log('THREE', this.canvas)
     }
 
     /** Build the scene from the provided parsed DXF.
@@ -223,8 +227,6 @@ export class DxfScene {
         //     // block.ResolveReferences(this.blocks)
         // }
 
-        console.log('>>> ')
-
         for (const block of this.blocks.values()) {
             if (block.data.hasOwnProperty("entities")) {
                 const blockCtx = block.DefinitionContext()
@@ -305,6 +307,9 @@ export class DxfScene {
     }
 
     scanEntities(entities, parentName = '') {
+        if (typeof window !== 'undefined') {
+            console.log('window', window)
+        }
         // if (entities.length === 1) {
         //     console.log('just one', entities[0].type)
         // }
@@ -546,6 +551,8 @@ export class DxfScene {
     }
 
     _ProcessDxfEntity(entity, blockCtx = null) {
+        const entityLayer = this.layers.get(entity.layer)
+
         let renderEntities
         switch (entity.type) {
         case "LINE":
@@ -1687,6 +1694,10 @@ export class DxfScene {
     _ProcessInsert(entity, blockCtx = null) {
         let isDLGM = false
         let isTheSame = false
+
+        const entityLayer = this.layers.get(entity.layer)
+
+        // console.log('LAYER', this.layers.get(entity.layer))
 
         if (entity.name.includes('DGLM')) {
             isDLGM = true

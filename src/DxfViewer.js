@@ -57,6 +57,9 @@ export class DxfViewer {
         camera.position.x = 0
         camera.position.y = 0
 
+        globalThis.camera = camera
+        globalThis.scene = this.scene
+
         this.simpleColorMaterial = []
         this.simplePointMaterial = []
         for (let i = 0; i < InstanceType.MAX; i++) {
@@ -442,8 +445,11 @@ export class DxfViewer {
             canvasCoord,
             position: this._CanvasToSceneCoord(canvasCoord.x, canvasCoord.y)
         })
+        const position = this._CanvasToSceneCoord(canvasCoord.x, canvasCoord.y)
 
-        console.log('position', this._CanvasToSceneCoord(canvasCoord.x, canvasCoord.y))
+        console.log('blocks', this.blocks)
+
+        // console.log('position', this._CanvasToSceneCoord(canvasCoord.x, canvasCoord.y))
     }
 
     /** @return {{x,y}} Scene coordinate corresponding to the specified canvas pixel coordinates. */

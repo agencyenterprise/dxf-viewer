@@ -155,6 +155,35 @@ export class DxfWorker {
         if (progressCbk) {
             progressCbk("prepare", 0, null)
         }
+
+        const visibleLayers = {}
+
+        for (const layerName in dxf.tables.layer.layers) {
+            const layer = dxf.tables.layer.layers[layerName]
+
+            if (layer.visible) {
+                visibleLayers[layerName] = layer
+            }
+            // visibleLayers[layer] = dxf.tables.layer.layers[layer].visible
+        }
+
+        const mappedVisibleLayers = new Map(Object.entries(visibleLayers))
+
+        dxf.tables.layer.layers = mappedVisibleLayers
+
+        // const visibleLayers = new Map(
+        //     [...dxf.tables.layer.layers]
+        //     .filter(([k, v]) => value.visible)
+        //   );
+
+        // console.log(visibleLayers)
+
+        // const dxfWithoutHiddenLayers = {
+        //     ...dxf
+        // }
+
+        // dxfWithoutHiddenLayers.tables.layer.layers = dxfWithoutHiddenLayers.tables.layer.layers.filter(layer => layer.visible)
+
         const dxfScene = new DxfScene(options)
         await dxfScene.Build(dxf, fontFetchers)
         return {scene: dxfScene.scene, dxf: options.retainParsedDxf === true ? dxf : undefined }
