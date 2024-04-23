@@ -21,6 +21,8 @@ export class DxfViewer {
      * @param options Some options can be overridden if specified. See DxfViewer.DefaultOptions.
      */
     constructor(domContainer, options = null) {
+        this.sceneData = null
+        this.n = 0;
         this.domContainer = domContainer
         this.options = Object.create(DxfViewer.DefaultOptions)
         if (options) {
@@ -181,7 +183,7 @@ export class DxfViewer {
         this.Clear()
 
         this.worker = new DxfWorker(workerFactory ? workerFactory() : null)
-        const {scene, dxf} = await this.worker.Load(url, fonts, this.options, progressCbk)
+        const {scene, sceneData, dxf} = await this.worker.Load(url, fonts, this.options, progressCbk)
         await this.worker.Destroy()
         this.worker = null
         this.parsedDxf = dxf
@@ -189,6 +191,8 @@ export class DxfViewer {
         this.origin = scene.origin
         this.bounds = scene.bounds
         this.hasMissingChars = scene.hasMissingChars
+
+        this.sceneData = sceneData
 
         for (const layer of scene.layers) {
             this.layers.set(layer.name, new Layer(layer.name, layer.displayName, layer.color))
@@ -207,7 +211,16 @@ export class DxfViewer {
                     this.blocks.set(batch.key.blockName, block)
                 }
 
-                block.PushBatch(new Batch(this, scene, batch, batch.key.blockName))
+                const positions = this.GetBatchPositions(batch.key.blockName, scene)
+
+                if (batch.key.blockName.includes('OUSBY')) {
+                    console.log('OUSBY', positions)
+                }
+
+                block.PushBatch(new Batch(this, scene, {
+                    ...batch,
+                    positions,
+                }, batch.key.blockName))
             }
         }
 
@@ -221,6 +234,11 @@ export class DxfViewer {
 
         /* Instantiate all entities. */
         for (const batch of scene.batches) {
+            if (batch?.key?.blockName?.includes?.('OUSBY') || batch.key?.blockName?.includes?.('DGLM')) {
+                console.log('FOUND AT LEAST ONE');
+                continue;
+            }
+            
             this._LoadBatch(scene, batch)
         }
 
@@ -485,19 +503,82 @@ export class DxfViewer {
         this.SetSize(Math.floor(entry.contentRect.width), Math.floor(entry.contentRect.height))
     }
 
+    GetBatchPositions(blockName, scene) {
+        const positions = new Map()
+
+        const block = this.sceneData?.blocks?.get?.(blockName)
+
+        if (block) {
+            const entities = block?.data?.entities ?? []
+            
+            for (let i = 0; i < entities.length; i++) {
+                const entity = entities[i];
+
+                if (blockName.includes('OUSBY')) {
+                    // console.log('*** ousby', entities[0].vertices)
+                    if (entity.position) {
+                        console.log('there is a position!')
+                        // console.log('*** position', entity.position)
+                    }
+
+                    if (entity.vertices) {
+                        positions.set(i, {
+                            bounds: block.bounds,
+                            offset: block.offset,
+                            vertices: entity.vertices
+                        })
+                    }
+                }
+
+                
+
+                
+            }
+        }
+        // const entities = block?.data?.entities
+
+        // if (!entities) {
+        //     return null
+        // }
+
+        // for (let i = 0; i < entities.length; i++) {
+        //     const entity = entities[i]
+
+        //     positions.push(entity)
+        // }
+
+        return positions
+    }
+
     _LoadBatch(scene, batch) {
+        const positions = this.GetBatchPositions(batch.key.blockName, scene)
+        // const blocks = this.blocks.entries().map(([key, value]) => {
+        //     // console.log('block', Object.keys(value.batches[0]))
+        //     // const position = value?.batches?.[0]?.test;
+
+        //     return value.batches.map(batch => ({
+        //         chunks: batch.chunks,
+        //         vertices: batch.vertices,
+        //     }))
+        // });
+
+        // console.log('blocks', blocks)
+
         if (batch.key.blockName !== null &&
             batch.key.geometryType !== BatchingKey.GeometryType.BLOCK_INSTANCE &&
             batch.key.geometryType !== BatchingKey.GeometryType.POINT_INSTANCE) {
             /* Block definition. */
             return
         }
-        const objects = new Batch(this, scene, batch, batch.key.blockName).CreateObjects()
+        
+        const objects = new Batch(this, scene, {
+            ...batch,
+            positions,
+        }, batch.key.blockName).CreateObjects()
 
         const layer = this.layers.get(batch.key.layerName)
 
         for (const obj of objects) {
-            console.log('obj', obj)
             this.scene.add(obj)
             if (layer) {
                 layer.PushObject(obj)
@@ -769,6 +850,8 @@ class Batch {
         this.blockName = blockName
         this.viewer = viewer
         this.key = batch.key
+        this.positions = batch.positions
+        this.position = batch.position
 
         if (batch.hasOwnProperty("verticesOffset")) {
             const verticesArray =
