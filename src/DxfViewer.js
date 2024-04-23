@@ -40,6 +40,8 @@ export class DxfViewer {
                 depth: false,
                 preserveDrawingBuffer: options.preserveDrawingBuffer
             })
+            
+            globalThis.renderer = this.renderer
         } catch (e) {
             console.log("Failed to create renderer: " + e)
             this.renderer = null
@@ -89,8 +91,8 @@ export class DxfViewer {
         }
         domContainer.appendChild(this.canvas)
 
-        this.canvas.addEventListener("pointerdown", this._OnPointerEvent.bind(this))
-        this.canvas.addEventListener("pointerup", this._OnPointerEvent.bind(this))
+        this.canvas.addEventListener("click", this._OnPointerEvent.bind(this))
+        // this.canvas.addEventListener("pointerup", this._OnPointerEvent.bind(this))
 
         this.Render()
 
@@ -199,11 +201,13 @@ export class DxfViewer {
                 batch.key.geometryType !== BatchingKey.GeometryType.POINT_INSTANCE) {
 
                 let block = this.blocks.get(batch.key.blockName)
+                
                 if (!block) {
                     block = new Block()
                     this.blocks.set(batch.key.blockName, block)
                 }
-                block.PushBatch(new Batch(this, scene, batch))
+
+                block.PushBatch(new Batch(this, scene, batch, batch.key.blockName))
             }
         }
 
@@ -443,20 +447,37 @@ export class DxfViewer {
         this._Emit(e.type, {
             domEvent: e,
             canvasCoord,
-            position: this._CanvasToSceneCoord(canvasCoord.x, canvasCoord.y)
+            position: this.CanvasToSceneCoord(canvasCoord.x, canvasCoord.y)
         })
-        const position = this._CanvasToSceneCoord(canvasCoord.x, canvasCoord.y)
+        const position = this.CanvasToSceneCoord(canvasCoord.x, canvasCoord.y)
 
-        console.log('blocks', this.blocks)
+        console.log('position', position)
+
+        // function convertVerticesToArray(vertices) {
+        //     const coordinates = [];
+        //     for (let i = 0; i < vertices.length; i += 3) {
+        //         coordinates.push({
+        //             x: vertices[i],
+        //             y: vertices[i + 1],
+        //             z: vertices[i + 2]
+        //         });
+        //     }
+        //     return coordinates;
+        // }
+
+        // const senOusby = this.blocks.get('1 FURN L1$0$SEN OUSBY CH 1')
+
+        // console.log('blocks', senOusby)
 
         // console.log('position', this._CanvasToSceneCoord(canvasCoord.x, canvasCoord.y))
     }
 
     /** @return {{x,y}} Scene coordinate corresponding to the specified canvas pixel coordinates. */
-    _CanvasToSceneCoord(x, y) {
+    CanvasToSceneCoord(x, y) {
         const v = new three.Vector3(x * 2 / this.canvasWidth - 1,
                                     -y * 2 / this.canvasHeight + 1,
                                     1).unproject(this.camera)
+                                    
         return {x: v.x, y: v.y}
     }
 
@@ -471,11 +492,12 @@ export class DxfViewer {
             /* Block definition. */
             return
         }
-        const objects = new Batch(this, scene, batch).CreateObjects()
+        const objects = new Batch(this, scene, batch, batch.key.blockName).CreateObjects()
 
         const layer = this.layers.get(batch.key.layerName)
 
         for (const obj of objects) {
+            console.log('obj', obj)
             this.scene.add(obj)
             if (layer) {
                 layer.PushObject(obj)
@@ -743,7 +765,8 @@ class Batch {
      * @param scene Serialized scene.
      * @param batch Serialized scene batch.
      */
-    constructor(viewer, scene, batch) {
+    constructor(viewer, scene, batch, blockName) {
+        this.blockName = blockName
         this.viewer = viewer
         this.key = batch.key
 
@@ -885,6 +908,7 @@ class Batch {
         } else {
             yield CreateObject(this.vertices)
         }
+
     }
 
     /**

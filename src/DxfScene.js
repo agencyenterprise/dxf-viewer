@@ -134,9 +134,6 @@ export class DxfScene {
         this.numBlocksFlattened = 0
         this.numEntitiesFiltered = 0
         this.unmappedInserts = {}
-
-        // Get THREE renderer
-        console.log('THREE', this.canvas)
     }
 
     /** Build the scene from the provided parsed DXF.
@@ -182,7 +179,9 @@ export class DxfScene {
 
         if (dxf.blocks) {
             for (const [, block] of Object.entries(dxf.blocks)) {
-                this.blocks.set(block.name, new Block(block))
+                this.blocks.set(block.name, new Block({
+                    ...block
+                }))
             }
         }
 
@@ -258,6 +257,10 @@ export class DxfScene {
         delete this.layers
         // delete this.blocks
         delete this.textRenderer
+    }
+
+    OnClick() {
+        console.log('clicked')
     }
 
     /** @return False to suppress the specified entity, true to permit rendering. */
@@ -551,8 +554,6 @@ export class DxfScene {
     }
 
     _ProcessDxfEntity(entity, blockCtx = null) {
-        const entityLayer = this.layers.get(entity.layer)
-
         let renderEntities
         switch (entity.type) {
         case "LINE":
@@ -578,19 +579,16 @@ export class DxfScene {
             renderEntities = this._DecomposeSpline(entity, blockCtx)
             break
         case "INSERT":
+            if (this.n === 0) {
+                this.n++
+            }
             /* Works with rendering batches without intermediate entities. */
             this._ProcessInsert(entity, blockCtx)
             return
         case "TEXT":
-            if (entity.text.includes('RECEPTION')) {
-                console.log(entity.position, entity.height, entity.width)
-            }
             renderEntities = this._DecomposeText(entity, blockCtx)
             break
         case "MTEXT":
-            if (entity.text.includes('RECEPTION')) {
-                console.log(entity.position, entity.height, entity.width)
-            }
             renderEntities = this._DecomposeMText(entity, blockCtx)
             break
         case "3DFACE":
@@ -1699,10 +1697,8 @@ export class DxfScene {
 
         // console.log('LAYER', this.layers.get(entity.layer))
 
-        if (entity.name.includes('DGLM')) {
-            isDLGM = true
-            // console.log(Object.keys(entity))
-            // console.log(entity.position.x, entity.position.y)
+        if (entity.name.includes('DGLM') && entity.type === 'INSERT') {
+            console.log('DGLM', `${entity.position.x} ${entity.position.y}`)
         }
 
         if (blockCtx) {
@@ -1720,15 +1716,15 @@ export class DxfScene {
             const nestedCtx = blockCtx.NestedBlockContext(block, entity)
             if (block.data.entities) {
                 for (const entity of block.data.entities) {
-                    if (isDLGM && entity.type === 'LWPOLYLINE') {
-                        for (const vertex of entity.vertices) {
-                            if (vertex.x === 238.8000060429244 && vertex.y === -214.7800469213055) {
-                                isTheSame = true
-                                break;
-                            }
+                    // if (isDLGM && entity.type === 'LWPOLYLINE') {
+                    //     for (const vertex of entity.vertices) {
+                    //         if (vertex.x === 238.8000060429244 && vertex.y === -214.7800469213055) {
+                    //             isTheSame = true
+                    //             break;
+                    //         }
                             
-                        }
-                    }
+                    //     }
+                    // }
                     
                     this._ProcessDxfEntity(entity, nestedCtx)
                 }
@@ -2274,8 +2270,6 @@ export class DxfScene {
     _IsInsert(ownerHandle) {
         const blocks = new Map(this.blocks)
 
-        console.log('ownerHandle', ownerHandle)
-
         for (const block of blocks.values()) {
             if (!block?.data?.entities) {
                 continue;
@@ -2740,6 +2734,10 @@ class BlockContext {
     /** @return {string} Block name */
     get name() {
         return this.block.data.name
+    }
+
+    get position() {
+        return this.origin
     }
 
     /**
