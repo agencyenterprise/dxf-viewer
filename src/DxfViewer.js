@@ -194,6 +194,9 @@ export class DxfViewer {
 
         this.sceneData = sceneData
 
+        console.log('sceneData', Object.keys(this.sceneData))
+        console.log('* sceneData', this.sceneData.bounds, this.sceneData.pdSize)
+
         for (const layer of scene.layers) {
             this.layers.set(layer.name, new Layer(layer.name, layer.displayName, layer.color))
         }
@@ -213,8 +216,12 @@ export class DxfViewer {
 
                 const positions = this.GetBatchPositions(batch.key.blockName, scene)
 
+                if (batch.key.blockName.includes('DGLM')) {
+                    console.log('DGLM', batch)
+                }
+
                 if (batch.key.blockName.includes('OUSBY')) {
-                    console.log('OUSBY', positions)
+                    console.log('OUSBY', batch)
                 }
 
                 block.PushBatch(new Batch(this, scene, {
@@ -515,17 +522,19 @@ export class DxfViewer {
                 const entity = entities[i];
 
                 if (blockName.includes('OUSBY')) {
+                    // console.log('!!! insert', this.sceneData.unmappedInserts.get(`${blockName}${i + 1}`))
                     // console.log('*** ousby', entities[0].vertices)
-                    if (entity.position) {
-                        console.log('there is a position!')
-                        // console.log('*** position', entity.position)
-                    }
+                    // if (entity.position) {
+                    //     console.log('there is a position!')
+                    //     // console.log('*** position', entity.position)
+                    // }    
+
+                    const name = `${blockName}${i + 1}`;
 
                     if (entity.vertices) {
-                        positions.set(i, {
-                            bounds: block.bounds,
-                            offset: block.offset,
-                            vertices: entity.vertices
+                        positions.set(`${blockName}${i + 1}`, {
+                            block,
+                            entity: this.sceneData.unmappedInserts.get(name),
                         })
                     }
                 }

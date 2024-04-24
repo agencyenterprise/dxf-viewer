@@ -104,6 +104,7 @@ function hexToDecimal(hex) {
  */
 export class DxfScene {
     constructor(options) {
+        this.indexes = {}
         this.instance = null
         this.colorOverrides = {}
         this.n = 0
@@ -133,7 +134,7 @@ export class DxfScene {
         this.pointShapeBlock = null
         this.numBlocksFlattened = 0
         this.numEntitiesFiltered = 0
-        this.unmappedInserts = {}
+        this.unmappedInserts = new Map()
     }
 
     /** Build the scene from the provided parsed DXF.
@@ -190,13 +191,25 @@ export class DxfScene {
         await this._FetchFonts(dxf)
 
         /* Scan all entities to analyze block usage statistics. */
-        for (const entity of dxf.entities) {
+        for (let i = 0; i < dxf.entities.length; i++) {
+            const entity = dxf.entities[i]
+
             if (!this._FilterEntity(entity)) {
                 continue
             }
             if (entity.type === "INSERT") {
-                this.inserts.set(entity.handle, entity)
                 const block = this.blocks.get(entity.name)
+
+                // block.total = block.total ? block.total + 1 : 0;
+
+                // if (block.total) {
+                //     console.log('block.total', block.total)
+                // }
+
+                this.indexes[entity.name] = this.indexes[entity.name] ? this.indexes[entity.name] + 1 : 0;
+                
+                this.unmappedInserts.set(`${entity.name}${this.indexes[entity.name]}`, entity)
+                
                 block?.RegisterInsert(entity)
             } else if (entity.type == "DIMENSION") {
                 if ((entity.block ?? null) !== null) {
@@ -229,7 +242,9 @@ export class DxfScene {
         for (const block of this.blocks.values()) {
             if (block.data.hasOwnProperty("entities")) {
                 const blockCtx = block.DefinitionContext()
-                for (const entity of block.data.entities) {
+                for (let i = 0; i < block.data.entities.length; i++) {
+                    const entity = block.data.entities[i]
+                    
                     if (!this._FilterEntity(entity)) {
                         continue
                     }
@@ -1721,6 +1736,8 @@ export class DxfScene {
      */
     _ProcessInsert(entity, blockCtx = null) {
         this.inserts.set(entity.handle, entity)
+        this.indexes[entity.name] = this.indexes[entity.name] ? this.indexes[entity.name] + 1 : 1;        
+        this.unmappedInserts.set(`${entity.name}${this.indexes[entity.name]}`, entity)
 
         if (blockCtx) {
             //XXX handle indirect recursion
