@@ -194,8 +194,8 @@ export class DxfViewer {
 
         this.sceneData = sceneData
 
-        console.log('sceneData', Object.keys(this.sceneData))
-        console.log('* sceneData', this.sceneData.bounds, this.sceneData.pdSize)
+        console.log('* scene', this.scene)
+        console.log('* sceneData', this.sceneData)
 
         for (const layer of scene.layers) {
             this.layers.set(layer.name, new Layer(layer.name, layer.displayName, layer.color))
@@ -514,6 +514,9 @@ export class DxfViewer {
         const positions = new Map()
 
         const block = this.sceneData?.blocks?.get?.(blockName)
+        const factor = this.sceneData?.vars?.get?.('DIMALTF')
+
+        // console.log('factor', factor)
 
         if (block) {
             const entities = block?.data?.entities ?? []
@@ -535,6 +538,7 @@ export class DxfViewer {
                         positions.set(`${blockName}${i + 1}`, {
                             block,
                             entity: this.sceneData.unmappedInserts.get(name),
+                            factor,
                         })
                     }
                 }
