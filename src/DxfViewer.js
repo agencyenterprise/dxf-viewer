@@ -524,28 +524,23 @@ export class DxfViewer {
             for (let i = 0; i < entities.length; i++) {
                 const entity = entities[i];
 
-                if (blockName.includes('OUSBY')) {
-                    // console.log('!!! insert', this.sceneData.unmappedInserts.get(`${blockName}${i + 1}`))
-                    // console.log('*** ousby', entities[0].vertices)
-                    // if (entity.position) {
-                    //     console.log('there is a position!')
-                    //     // console.log('*** position', entity.position)
-                    // }    
+               
+                // console.log('!!! insert', this.sceneData.unmappedInserts.get(`${blockName}${i + 1}`))
+                // console.log('*** ousby', entities[0].vertices)
+                // if (entity.position) {
+                //     console.log('there is a position!')
+                //     // console.log('*** position', entity.position)
+                // }    
 
-                    const name = `${blockName}${i + 1}`;
+                const name = `${blockName}${i + 1}`;
 
-                    if (entity.vertices) {
-                        positions.set(`${blockName}${i + 1}`, {
-                            block,
-                            entity: this.sceneData.unmappedInserts.get(name),
-                            factor,
-                        })
-                    }
+                if (entity.vertices) {
+                    positions.set(`${blockName}${i + 1}`, {
+                        block,
+                        entity: this.sceneData.unmappedInserts.get(name),
+                        factor,
+                    })
                 }
-
-                
-
-                
             }
         }
         // const entities = block?.data?.entities
