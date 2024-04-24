@@ -1740,6 +1740,16 @@ export class DxfScene {
         this.unmappedInserts.set(`${entity.name}${this.indexes[entity.name]}`, entity)
 
         if (blockCtx) {
+            if (entity.name.includes('OUSBY')) {
+                // console.log('blockCtx', blockCtx.block.offset, blockCtx.block.flatten, blockCtx.block.bounds)
+                // console.log('entity', entity)
+
+                // if (compareArray(blockCtx.transform.elements, transforms) === false) {
+                //     console.log('THERE IS ONE DIFFERENT')
+                //     console.log(blockCtx.transform.elements)
+                //     console.log('==============================')
+                // }
+            }
             //XXX handle indirect recursion
             if (blockCtx.name === entity.name) {
                 console.warn("Recursive block reference: " + blockCtx.name)
