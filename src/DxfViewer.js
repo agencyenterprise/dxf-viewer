@@ -476,8 +476,6 @@ export class DxfViewer {
         })
         const position = this.CanvasToSceneCoord(canvasCoord.x, canvasCoord.y)
 
-        console.log('position', position)
-
         // function convertVerticesToArray(vertices) {
         //     const coordinates = [];
         //     for (let i = 0; i < vertices.length; i += 3) {
