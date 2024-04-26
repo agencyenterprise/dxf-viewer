@@ -625,16 +625,6 @@ export class DxfScene {
             return
         }
 
-        if (this.n < 10) {
-            const blocks = this.blocks.entries()
-
-            // for (const [blockName, block] of blocks) {
-            //     console.log('blockName', blockName)
-            // }
-            
-            this.n++
-        }
-
         // const inserts = this.inserts.get(entity.ownerHandle)
 
         // if (inserts) {
@@ -1740,6 +1730,8 @@ export class DxfScene {
         this.unmappedInserts.set(`${entity.name}${this.indexes[entity.name]}`, entity)
 
         if (blockCtx) {
+            const { origin } = blockCtx
+
             if (entity.name.includes('OUSBY')) {
                 // console.log('blockCtx', blockCtx.block.offset, blockCtx.block.flatten, blockCtx.block.bounds)
                 // console.log('entity', entity)
@@ -1762,6 +1754,9 @@ export class DxfScene {
                 return
             }
             const nestedCtx = blockCtx.NestedBlockContext(block, entity)
+            
+            block.transform = nestedCtx.transform
+            block.nestedTransform = nestedCtx.nestedTransform
             
             if (block.data.entities) {
                 for (const entity of block.data.entities) {
@@ -2513,6 +2508,7 @@ class RenderBatch {
     constructor(key, position) {
         this.key = key
         this.position = position
+        this.transform = null
 
         if (key.IsIndexed()) {
             this.chunks = []
@@ -2578,6 +2574,7 @@ class RenderBatch {
      * @param transform {?Matrix3} Optional transform to apply for merged vertices.
      */
     Merge(batch, transform = null) {
+        this.transform = transform
         if (this.key.geometryType !== batch.key.geometryType) {
             throw new Error("Rendering batch merging geometry type mismatch: " +
                             `${this.key.geometryType} !== ${batch.key.geometryType}`)
@@ -2855,6 +2852,7 @@ class BlockContext {
         const ctx = new BlockContext(this.block, BlockContext.Type.NESTED_DEFINITION)
         ctx.insertName = 'nested'
         ctx.transform = new Matrix3().multiplyMatrices(this.transform, nestedTransform)
+        ctx.nestedTransform = nestedTransform
         return ctx
     }
 }
