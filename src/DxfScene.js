@@ -104,6 +104,7 @@ function hexToDecimal(hex) {
  */
 export class DxfScene {
     constructor(options) {
+        this.texts = []
         this.indexes = {}
         this.instance = null
         this.colorOverrides = {}
@@ -600,9 +601,17 @@ export class DxfScene {
             this._ProcessInsert(entity, blockCtx)
             return
         case "TEXT":
+            this.texts.push({
+                text: entity.text,
+                position: entity.position
+            })
             renderEntities = this._DecomposeText(entity, blockCtx)
             break
         case "MTEXT":
+            this.texts.push({
+                text: entity.text,
+                position: entity.position
+            })
             renderEntities = this._DecomposeMText(entity, blockCtx)
             break
         case "3DFACE":
