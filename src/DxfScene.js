@@ -601,17 +601,17 @@ export class DxfScene {
             this._ProcessInsert(entity, blockCtx)
             return
         case "TEXT":
-            this.texts.push({
-                text: entity.text,
-                position: entity.position
-            })
+            // this.texts.push({
+            //     text: entity.text,
+            //     position: entity.position
+            // })
             renderEntities = this._DecomposeText(entity, blockCtx)
             break
         case "MTEXT":
-            this.texts.push({
-                text: entity.text,
-                position: entity.position
-            })
+            // this.texts.push({
+            //     text: entity.text,
+            //     position: entity.position
+            // })
             renderEntities = this._DecomposeMText(entity, blockCtx)
             break
         case "3DFACE":
@@ -624,12 +624,18 @@ export class DxfScene {
             renderEntities = this._DecomposeDimension(entity, blockCtx)
             break
         case "ATTRIB":
+            this.texts.push({
+                text: entity.text,
+                startPoint: entity.startPoint,
+                endPoint: entity.endPoint,
+            })
             renderEntities = this._DecomposeAttribute(entity, blockCtx)
             break
         case "HATCH":
             renderEntities = this._DecomposeHatch(entity, blockCtx)
             break
         default:
+            console.log('Unhandled', entity.text)
             console.log("Unhandled entity type: " + entity.type)
             return
         }
