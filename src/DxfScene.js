@@ -1736,12 +1736,12 @@ export class DxfScene {
     _ProcessInsert(entity, blockCtx = null) {
         this.inserts.set(entity.handle, entity)
         this.indexes[entity.name] = this.indexes[entity.name] ? this.indexes[entity.name] + 1 : 1;        
-        this.unmappedInserts.set(`${entity.name}${this.indexes[entity.name]}`, entity)
 
         if (blockCtx) {
             const { origin } = blockCtx
 
-            if (entity.name.includes('OUSBY')) {
+            if (entity.name.includes('DGLM')) {
+                
                 // console.log('blockCtx', blockCtx.block.offset, blockCtx.block.flatten, blockCtx.block.bounds)
                 // console.log('entity', entity)
 
@@ -1766,14 +1766,31 @@ export class DxfScene {
             
             block.transform = nestedCtx.transform
             block.nestedTransform = nestedCtx.nestedTransform
+
+            const vertices = []
             
             if (block.data.entities) {
                 for (const entity of block.data.entities) {
                     this._ProcessDxfEntity(entity, nestedCtx)
+
+                    if (!entity.vertices) {
+                        continue;
+                    }
+
+                    for (const vertex of entity.vertices) {
+                        vertices.push(vertex)
+                    }
                 }
             }
+
+            this.unmappedInserts.set(`${entity.name}${this.indexes[entity.name]}`, {
+                ...entity,
+                vertices,
+            })
             return
         }
+
+        this.unmappedInserts.set(`${entity.name}${this.indexes[entity.name]}`, entity)
 
         const block = this.blocks.get(entity.name)
 
