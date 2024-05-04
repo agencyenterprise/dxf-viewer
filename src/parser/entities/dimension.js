@@ -21,7 +21,6 @@ EntityParser.prototype.parseEntity = function(scanner, curr) {
             break;
         case 10: // X coordinate of 'first alignment point'
             entity.anchorPoint = helpers.parsePoint(scanner);
-            console.log('anchorPoint', entity.anchorPoint);
             break;
         case 11:
             entity.middleOfText = helpers.parsePoint(scanner);
