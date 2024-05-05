@@ -25,6 +25,7 @@ export class DxfViewer {
         this.n = 0;
         this.domContainer = domContainer
         this.options = Object.create(DxfViewer.DefaultOptions)
+        this.objects = new Map()
         if (options) {
             Object.assign(this.options, options)
         }
@@ -544,6 +545,46 @@ export class DxfViewer {
         // console.log('keys', batch.key.blockName)
         const positions = this.GetBatchPositions(batch.key.blockName, scene)
 
+        if (batch.key.insertName) {
+            const block = this.blocks.get(batch.key.insertName)
+
+            if (!block) {
+                return
+            }
+
+            const objects = new Batch(this, scene, {
+                ...batch,
+                positions,
+            }, batch.key.insertName).CreateObjects()
+
+            for (const obj of objects) {
+                obj.insertName = batch.key.insertName
+
+                // const inserts = this.sceneData.unmappedInserts.entries()
+                // let insert = null
+
+                for (const [key] of this.sceneData.unmappedInserts.entries()) {
+                    const [_, b] = key.split(batch.key.insertName)
+
+                    if (!isNaN(b)) {
+                        console.log('!!!')
+                        this.objects.set(key, {
+                            obj,
+                        })
+                        break;
+                    }
+                }
+
+                // this.scene.add(obj)
+
+                // if (layer) {
+                //     layer.PushObject(obj)
+                // }
+            }
+            
+            // return
+        }
+
         if (batch.key.blockName !== null &&
             batch.key.geometryType !== BatchingKey.GeometryType.BLOCK_INSTANCE &&
             batch.key.geometryType !== BatchingKey.GeometryType.POINT_INSTANCE) {
@@ -559,7 +600,7 @@ export class DxfViewer {
         const layer = this.layers.get(batch.key.layerName)
 
         for (const obj of objects) {
-            obj.insertName = batch.key.insertName
+            obj.insertName = batch.key.blockName
 
             this.scene.add(obj)
             if (layer) {

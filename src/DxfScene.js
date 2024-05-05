@@ -944,7 +944,7 @@ export class DxfScene {
             /* Shaped mark should be instanced. */
             const key = new BatchingKey(layer, POINT_SHAPE_BLOCK_NAME,
                                         BatchingKey.GeometryType.POINT_INSTANCE, color, 0, parentName)
-            const batch = this._GetBatch(key, blockCtx?.name)
+            const batch = this._GetBatch(key, parentName)
             batch.PushVertex(this._TransformVertex(entity.position))
             this._CreatePointShapeBlock(parentName)
             return
@@ -1819,7 +1819,7 @@ export class DxfScene {
         } else {
             const key = new BatchingKey(layer, entity.name, BatchingKey.GeometryType.BLOCK_INSTANCE,
                                         color, lineType, entity.name)
-            const batch = this._GetBatch(key, blockCtx?.name)
+            const batch = this._GetBatch(key, insertName)
             batch.PushInstanceTransform(transform)
         }
     }
@@ -1838,7 +1838,7 @@ export class DxfScene {
 
         // console.log('blockBatch', insertName)
         //XXX line type
-        const key = new BatchingKey(layerName, null, blockBatch.key.geometryType, color, lineType, insertName)
+        const key = new BatchingKey(insertName, null, blockBatch.key.geometryType, color, lineType, insertName)
         const batch = this._GetBatch(key)
         batch.Merge(blockBatch, transform)
     }
@@ -2228,7 +2228,7 @@ export class DxfScene {
         }
         const key = new BatchingKey(entity.layer, blockCtx?.name,
                                     BatchingKey.GeometryType.POINTS, entity.color, 0, parentName)
-        const batch = this._GetBatch(key, blockCtx?.name)
+        const batch = this._GetBatch(key, parentName)
         for (const v of entity.vertices) {
             batch.PushVertex(this._TransformVertex(v, blockCtx))
         }
@@ -2247,7 +2247,7 @@ export class DxfScene {
         }
         const key = new BatchingKey(entity.layer, blockCtx?.name,
                                     BatchingKey.GeometryType.LINES, entity.color, entity.lineType, parentName)
-        const batch = this._GetBatch(key, blockCtx?.name)
+        const batch = this._GetBatch(key, parentName)
         for (const v of entity.vertices) {
             batch.PushVertex(this._TransformVertex(v, blockCtx))
         }
@@ -2272,7 +2272,7 @@ export class DxfScene {
             const key = new BatchingKey(entity.layer, blockCtx?.name,
                                         BatchingKey.GeometryType.LINES, entity.color,
                                         entity.lineType, parentName)
-            const batch = this._GetBatch(key, blockCtx?.name)
+            const batch = this._GetBatch(key, parentName)
             let prev = null
             for (const v of entity.vertices) {
                 if (prev !== null) {
@@ -2291,7 +2291,7 @@ export class DxfScene {
         const key = new BatchingKey(entity.layer, blockCtx?.name,
                                     BatchingKey.GeometryType.INDEXED_LINES,
                                     entity.color, entity.lineType, parentName)
-        const batch = this._GetBatch(key, blockCtx?.name)
+        const batch = this._GetBatch(key, parentName)
         /* Line may be split if exceeds chunk limit. */
         for (const lineChunk of entity._IterateLineChunks()) {
             const chunk = batch.PushChunk(lineChunk.verticesCount)
@@ -2323,7 +2323,7 @@ export class DxfScene {
         const key = new BatchingKey(entity.layer, blockCtx?.name,
                                     BatchingKey.GeometryType.INDEXED_TRIANGLES,
                                     entity.color, 0, parentName)
-        const batch = this._GetBatch(key, blockCtx?.name)
+        const batch = this._GetBatch(key, parentName)
         //XXX splitting into chunks is not yet implemented. Currently used only for text glyphs so
         // should fit into one chunk
         const chunk = batch.PushChunk(entity.vertices.length)
@@ -2346,7 +2346,6 @@ export class DxfScene {
 
             for (const entity of block.data.entities) {
                 if (entity.handle === ownerHandle) {
-                    // console.log('entity', entity)
                     return true
                 }
             }
@@ -2442,6 +2441,7 @@ export class DxfScene {
             //     console.log('BATCH', batch.insertName, parentName)
             // }
             batch.key.insertName = parentName
+            
             return batch
         }
 
@@ -2760,16 +2760,17 @@ class Block {
      * @return {Boolean} New flatten flag state.
      */
     SetFlatten() {
-        if (!this.HasGeometry()) {
-            return false
-        }
-        /* Flatten if a block is used once (pure optimization if shares its layer with other
-         * geometry) or if total instanced vertices number is less than a threshold (trade some
-         * space for draw calls number).
-         */
-        this.flatten = this.useCount === 1 ||
-                       this.useCount * this.verticesCount <= BLOCK_FLATTENING_VERTICES_THRESHOLD
-        return this.flatten
+        return false
+        // if (!this.HasGeometry()) {
+        //     return false
+        // }
+        // /* Flatten if a block is used once (pure optimization if shares its layer with other
+        //  * geometry) or if total instanced vertices number is less than a threshold (trade some
+        //  * space for draw calls number).
+        //  */
+        // this.flatten = this.useCount === 1 ||
+        //                this.useCount * this.verticesCount <= BLOCK_FLATTENING_VERTICES_THRESHOLD
+        // return this.flatten
     }
 
     /** @return {Boolean} True if has something to draw. */
