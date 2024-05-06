@@ -238,138 +238,38 @@ export class DxfViewer {
 
         // console.log('sceneData.insertBlocks', )
 
-        for (const [key, { batches, insertName, vertices }] of sceneData.insertBlocks.entries()) {
+        
+
+        //XXX line type
+
+        for (const [key, { batches }] of sceneData.insertBlocks.entries()) {
+            const handledObjects = []
+
             for (const batch of batches) {
-                // const objects = new Batch(this, scene, batch, insertName).CreateObjects(null, true)
-                const handledObjects = []
-                const handledVertices = []
-
-                if (!vertices) {
-                    continue
-                }
-
-                // Add z value to vertices
-                for (let i = 0; i < vertices.length; i++) {
-                    const vertex = vertices[i]
-                    handledVertices.push(vertex.x, vertex.y, 0)
-                }
-
-                const geometry = new three.BufferGeometry()
-                const positionAttribute = new three.Float32BufferAttribute(handledVertices, 3);
-                geometry.setAttribute('position', positionAttribute);
-
-                const material = new three.LineBasicMaterial({
-                    color: 0xFF0000
-                })
-
-                const lines = new three.LineSegments(geometry, material);
-
-                handledObjects.push(lines)
-
-                if (bypass) {
-                    continue
-                }
-
                 if (batch.chunks) {
                     for (const chunk of batch.chunks) {
-                        const geometry = new three.BufferGeometry()
-                        const verticesArray = [];
+                        const object = this.CreateViewerObject({
+                            batch,
+                            indices: chunk.indices,
+                            vertices: chunk.vertices,
+                        })
 
-                        if (chunk.vertices) {
-                            for (let i = 0; i < chunk.vertices.size; i += 2) {
-                                verticesArray.push(chunk.vertices.buffer[i], chunk.vertices.buffer[i + 1], 0);
-                            }
-
-                            const positionAttribute = new three.Float32BufferAttribute(verticesArray, 3);
-                            geometry.setAttribute('position', positionAttribute);
-                        }
-
-                        if (chunk.indices) {
-                            const indices = [];
-                            const numVertices = verticesArray.length / 3;
-
-                            for (let i = 0; i < numVertices; i++) {
-                                indices.push(i);
-                            }
-
-                            const indexAttribute = new three.Uint16BufferAttribute(chunk.indices.buffer, 1);
-                            geometry.setIndex(indexAttribute);
-                        }
-
-                        const mesh = new three.Mesh(geometry, new three.MeshBasicMaterial({ color: 0xFF0000, wireframe: true }));
-                        
-                        // const material = new three.LineBasicMaterial({
-                        //     color: 0xFF0000
-                        // })
-
-                        // const lines = new three.LineSegments(geometry, material);
-                        
-
-                        // object.frustumCulled = false
-                        // object.matrixAutoUpdate = false
-
-                        handledObjects.push(mesh)
-
-                        // geometry.setAttribute('position', chunk.vertices)
-
-                        // if (chunk.indices) {
-                        //     geometry.setIndex(chunk.indices)
-                        // }
-
-                        // // const mesh = new THREE.Mesh(geometry, material)
-                        // const material = new three.LineBasicMaterial({
-                        //     color: 0xFF0000
-                        // })
-                        // const lines = new three.LineSegments(geometry, material);
-                        
-                        // // object.frustumCulled = false
-                        // // object.matrixAutoUpdate = false
-                        
-                        // handledObjects.push(lines)
+                        handledObjects.push(object)
                     }
-                }   
+                } else {
+                    const object = this.CreateViewerObject({
+                        batch,
+                        indices: null,
+                        vertices: batch.vertices,
+                    })
 
-                this.objects.set(key, handledObjects)
-                
-                // geometry.setAttribute("position", vertices)
-                // instanceBatch?._SetInstanceTransformAttribute(geometry)
-            // const obj = new objConstructor(geometry, material)
-            // obj.frustumCulled = false
-            // obj.matrixAutoUpdate = false
-            // obj.vertices = vertices
-            // return obj
+                    handledObjects.push(object)
+                }
 
                 console.log('!BATCH', batch)
-
-                // for (const obj of objects) {
-                //     handledObjects.push(obj)
-                //     // obj.insertName = insertName
-
-                //     // for (const [key] of this.sceneData.unmappedInserts.entries()) {
-                //     //     if (key.startsWith(`${insertName}__`) || key === insertName) {
-                //     //         this.objects.set(key, {
-                //     //             obj,
-                //     //         })
-                //     //     }
-                //     // }
-                // }
-
-                // console.log('batch', )
-                // this.objects.set(batch.key.blockName, objects)
-
-                // if (key.includes('1 FURN L1$0$A$Cb807f822')) {
-                //     console.log('objects', objects)
-                // }
             }
-            // for (const batch of block.batches) {
-            //     const objects = new Batch(this, scene, batch, insertName).CreateObjects()
 
-            //     if (insertName.includes('1 FURN L1$0$A$Cb807f822')) {
-            //         console.log('batch', batch)
-            //     }
-
-
-            // }
+            this.objects.set(key, handledObjects)
         }   
 
         this._Emit("loaded")
@@ -388,6 +288,51 @@ export class DxfViewer {
 
         this._CreateControls()
         this.Render()
+    }
+
+    CreateViewerObject({
+        batch,
+        indices,
+        vertices,
+    }) {
+        const color = batch.key.color
+        const materialFactory =
+        batch.key.geometryType === BatchingKey.GeometryType.POINTS ||
+        batch.key.geometryType === BatchingKey.GeometryType.POINT_INSTANCE ?
+            this._GetSimplePointMaterial : this._GetSimpleColorMaterial
+
+        const material = materialFactory.call(this, this._TransformColor(color), InstanceType.NONE)
+
+        let objConstructor
+        switch (batch.key.geometryType) {
+        case BatchingKey.GeometryType.POINTS:
+        /* This method also called for creating dots for shaped point instances. */
+        case BatchingKey.GeometryType.POINT_INSTANCE:
+            objConstructor = three.Points
+            break
+        case BatchingKey.GeometryType.LINES:
+        case BatchingKey.GeometryType.INDEXED_LINES:
+            objConstructor = three.LineSegments
+            break
+        case BatchingKey.GeometryType.TRIANGLES:
+        case BatchingKey.GeometryType.INDEXED_TRIANGLES:
+            objConstructor = three.Mesh
+            break
+        default:
+            throw new Error("Unexpected geometry type:" + batch.key.geometryType)
+        }
+
+        const geometry = new three.BufferGeometry()
+        const positionAttribute = new three.Float32BufferAttribute(vertices.buffer, 2);
+
+        geometry.setAttribute('position', positionAttribute);
+
+        if (indices) {
+            const handledIndices = new three.Uint16BufferAttribute(indices.buffer, 1)
+            geometry.setIndex(handledIndices)
+        }
+
+        return new objConstructor(geometry, material);
     }
 
     Render() {

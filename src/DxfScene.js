@@ -563,6 +563,71 @@ export class DxfScene {
         }
     }
 
+    // HandleDXFEntity(entity) {
+    //     let renderEntities
+
+    //     switch (entity.type) {
+    //         case "LINE":
+    //             renderEntities = this._HandleDXFLine(entity)
+    //             break
+    //         case "POLYLINE":
+    //         case "LWPOLYLINE":
+    //             renderEntities = this._DecomposePolyline(entity, blockCtx)
+    //             break
+    //         case "ARC":
+    //             renderEntities = this._DecomposeArc(entity, blockCtx)
+    //             break
+    //         case "CIRCLE":
+    //             renderEntities = this._DecomposeCircle(entity, blockCtx)
+    //             break
+    //         case "ELLIPSE":
+    //             renderEntities = this._DecomposeEllipse(entity, blockCtx)
+    //             break
+    //         case "POINT":
+    //             renderEntities = this._DecomposePoint(entity, blockCtx, parentName)
+    //             break
+    //         case "SPLINE":
+    //             renderEntities = this._DecomposeSpline(entity, blockCtx)
+    //             break
+    //         case "INSERT":
+    //             /* Works with rendering batches without intermediate entities. */
+    //             this._ProcessInsert(entity, blockCtx)
+    //             return
+    //         case "TEXT":
+    //             renderEntities = this._DecomposeText(entity, blockCtx)
+    //             break
+    //         case "MTEXT":
+    //             // this.texts.push({
+    //             //     text: entity.text,
+    //             //     position: entity.position
+    //             // })
+    //             renderEntities = this._DecomposeMText(entity, blockCtx)
+    //             break
+    //         case "3DFACE":
+    //             renderEntities = this._Decompose3DFace(entity, blockCtx)
+    //             break
+    //         case "SOLID":
+    //             renderEntities = this._DecomposeSolid(entity, blockCtx)
+    //             break
+    //         case "DIMENSION":
+    //             renderEntities = this._DecomposeDimension(entity, blockCtx)
+    //             break
+    //         case "ATTRIB":
+    //             this.texts.push({
+    //                 text: entity.text,
+    //                 startPoint: entity.startPoint,
+    //                 endPoint: entity.endPoint,
+    //             })
+    //             renderEntities = this._DecomposeAttribute(entity, blockCtx)
+    //             break
+    //         case "HATCH":
+    //             renderEntities = this._DecomposeHatch(entity, blockCtx)
+    //             break
+    //         default:
+    //             return
+    //         }
+    // }
+
     _ProcessDxfEntity(entity, blockCtx = null, parentName) {
         let renderEntities
         switch (entity.type) {
@@ -630,29 +695,15 @@ export class DxfScene {
             return
         }
 
-        // const inserts = this.inserts.get(entity.ownerHandle)
-
-        // if (inserts) {
-        //     console.log('inserts', inserts)
-        // }
-        
-        // if (this.n < 200) {
-            
-
-        //     // if (insert) {
-        //     //     console.log('insert', insert)
-        //     // }
-            
-        //     this.n++
-        // }
-
-        if (!parentName) {
-            // console.log('no parentName in _ProcessDxfEntity')
-        }
+        const batches = []
 
         for (const renderEntity of renderEntities) {
-            this._ProcessEntity(renderEntity, blockCtx, parentName)
+            const batch = this._ProcessEntity(renderEntity, blockCtx, parentName)
+
+            batches.push(batch)
         }
+
+        return batches
     }
     /**
      * @param entity {Entity}
@@ -661,17 +712,13 @@ export class DxfScene {
     _ProcessEntity(entity, blockCtx = null, parentName) {
         switch (entity.type) {
         case Entity.Type.POINTS:
-            this._ProcessPoints(entity, blockCtx, parentName)
-            break
+            return this._ProcessPoints(entity, blockCtx, parentName)
         case Entity.Type.LINE_SEGMENTS:
-            this._ProcessLineSegments(entity, blockCtx, parentName)
-            break
+            return this._ProcessLineSegments(entity, blockCtx, parentName)
         case Entity.Type.POLYLINE:
-            this._ProcessPolyline(entity, blockCtx, parentName)
-            break
+            return this._ProcessPolyline(entity, blockCtx, parentName)
         case Entity.Type.TRIANGLES:
-            this._ProcessTriangles(entity, blockCtx. parentName)
-            break
+            return this._ProcessTriangles(entity, blockCtx. parentName)
         default:
             throw new Error("Unhandled entity type: " + entity.type)
         }
@@ -701,6 +748,19 @@ export class DxfScene {
         const layer = this._GetEntityLayer(entity, blockCtx)
         const color = this._GetEntityColor(entity, blockCtx)
         yield new Entity({
+            type: Entity.Type.LINE_SEGMENTS,
+            vertices: entity.vertices,
+            layer, color,
+            lineType: this._GetLineType(entity, entity.vertices[0]),
+        })
+    }
+
+    _HandleDXFLine(entity) {
+        if (entity.vertices.length !== 2) {
+            return
+        }
+
+        return new Entity({
             type: Entity.Type.LINE_SEGMENTS,
             vertices: entity.vertices,
             layer, color,
@@ -1761,11 +1821,12 @@ export class DxfScene {
             block.transform = nestedCtx.transform
             block.nestedTransform = nestedCtx.nestedTransform
 
+            const renderEntities = []
             const vertices = []
             
             if (block.data.entities) {
                 for (const entity of block.data.entities) {
-
+                    // const handledEntities = this.HandleDXFEntity(entity)
                     this._ProcessDxfEntity(entity, nestedCtx, insertName)
 
                     if (!entity.vertices) {
@@ -1781,6 +1842,7 @@ export class DxfScene {
             if (entity.name.includes('1 FURN L1$0$A$Cb807f822') || entity.name.includes('DGLM') || entity.name.includes('OUSBY')) {
                 this.insertBlocks.set(entity.name, {
                     ...block,
+                    renderEntities,
                     vertices
                 })
             }
@@ -2230,15 +2292,14 @@ export class DxfScene {
      * @param blockCtx {?BlockContext}
      */
     _ProcessPoints(entity, blockCtx = null, parentName) {
-        if (!parentName) {
-            // console.log('no parentName in _ProcessPoints')
-        }
         const key = new BatchingKey(entity.layer, blockCtx?.name,
                                     BatchingKey.GeometryType.POINTS, entity.color, 0, parentName)
         const batch = this._GetBatch(key, parentName)
         for (const v of entity.vertices) {
             batch.PushVertex(this._TransformVertex(v, blockCtx))
         }
+
+        return batch
     }
 
     /**
@@ -2249,15 +2310,13 @@ export class DxfScene {
         if (entity.vertices.length % 2 !== 0) {
             throw Error("Even number of vertices expected")
         }
-        if (!parentName) {
-            // console.log('no parentName in _ProcessLineSegments')
-        }
         const key = new BatchingKey(entity.layer, blockCtx?.name,
                                     BatchingKey.GeometryType.LINES, entity.color, entity.lineType, parentName)
         const batch = this._GetBatch(key, parentName)
         for (const v of entity.vertices) {
             batch.PushVertex(this._TransformVertex(v, blockCtx))
         }
+        return batch
     }
 
     /**
@@ -2267,9 +2326,6 @@ export class DxfScene {
     _ProcessPolyline(entity, blockCtx = null, parentName) {
         if (entity.vertices.length < 2) {
             return
-        }
-        if (!parentName) {
-            // console.log('no parentName in _ProcessPolyline')
         }
         /* It is more optimal to render short polylines un-indexed. Also DXF often contains
          * polylines with just two points.
@@ -2310,6 +2366,7 @@ export class DxfScene {
             }
             chunk.Finish()
         }
+        return batch
     }
 
     /**
@@ -2341,6 +2398,8 @@ export class DxfScene {
             chunk.PushIndex(idx)
         }
         chunk.Finish()
+
+        return batch
     }
 
     _IsInsert(ownerHandle) {
