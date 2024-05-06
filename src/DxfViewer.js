@@ -938,6 +938,8 @@ class Batch {
         this.positions = batch.positions
         this.position = batch.position
         this.name = blockName
+        this.transformsOffset = batch.transformsOffset
+        this.verticesOffset = batch.verticesOffset
 
         if (batch.hasOwnProperty("verticesOffset")) {
             const verticesArray =
