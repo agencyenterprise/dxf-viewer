@@ -265,8 +265,6 @@ export class DxfViewer {
 
                     handledObjects.push(object)
                 }
-
-                console.log('!BATCH', batch)
             }
 
             this.objects.set(key, handledObjects)

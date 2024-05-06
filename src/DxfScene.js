@@ -1839,13 +1839,15 @@ export class DxfScene {
                 }
             }
 
-            if (entity.name.includes('1 FURN L1$0$A$Cb807f822') || entity.name.includes('DGLM') || entity.name.includes('OUSBY')) {
-                this.insertBlocks.set(entity.name, {
-                    ...block,
-                    renderEntities,
-                    vertices
-                })
-            }
+            // if (entity.name.includes('1 FURN L1$0$A$Cb807f822') || entity.name.includes('DGLM') || entity.name.includes('OUSBY')) {
+                
+            // }
+
+            this.insertBlocks.set(entity.name, {
+                ...block,
+                renderEntities,
+                vertices
+            })
 
             this.unmappedInserts.set(`${entity.name}__${this.indexes[entity.name]}`, {
                 ...entity,
