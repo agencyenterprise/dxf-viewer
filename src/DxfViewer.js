@@ -234,6 +234,144 @@ export class DxfViewer {
             this._LoadBatch(scene, batch)
         }
 
+        const bypass = true
+
+        // console.log('sceneData.insertBlocks', )
+
+        for (const [key, { batches, insertName, vertices }] of sceneData.insertBlocks.entries()) {
+            for (const batch of batches) {
+                // const objects = new Batch(this, scene, batch, insertName).CreateObjects(null, true)
+                const handledObjects = []
+                const handledVertices = []
+
+                if (!vertices) {
+                    continue
+                }
+
+                // Add z value to vertices
+                for (let i = 0; i < vertices.length; i++) {
+                    const vertex = vertices[i]
+                    handledVertices.push(vertex.x, vertex.y, 0)
+                }
+
+                const geometry = new three.BufferGeometry()
+                const positionAttribute = new three.Float32BufferAttribute(handledVertices, 3);
+                geometry.setAttribute('position', positionAttribute);
+
+                const material = new three.LineBasicMaterial({
+                    color: 0xFF0000
+                })
+
+                const lines = new three.LineSegments(geometry, material);
+
+                handledObjects.push(lines)
+
+                if (bypass) {
+                    continue
+                }
+
+                if (batch.chunks) {
+                    for (const chunk of batch.chunks) {
+                        const geometry = new three.BufferGeometry()
+                        const verticesArray = [];
+
+                        if (chunk.vertices) {
+                            for (let i = 0; i < chunk.vertices.size; i += 2) {
+                                verticesArray.push(chunk.vertices.buffer[i], chunk.vertices.buffer[i + 1], 0);
+                            }
+
+                            const positionAttribute = new three.Float32BufferAttribute(verticesArray, 3);
+                            geometry.setAttribute('position', positionAttribute);
+                        }
+
+                        if (chunk.indices) {
+                            const indices = [];
+                            const numVertices = verticesArray.length / 3;
+
+                            for (let i = 0; i < numVertices; i++) {
+                                indices.push(i);
+                            }
+
+                            const indexAttribute = new three.Uint16BufferAttribute(chunk.indices.buffer, 1);
+                            geometry.setIndex(indexAttribute);
+                        }
+
+                        const mesh = new three.Mesh(geometry, new three.MeshBasicMaterial({ color: 0xFF0000, wireframe: true }));
+                        
+                        // const material = new three.LineBasicMaterial({
+                        //     color: 0xFF0000
+                        // })
+
+                        // const lines = new three.LineSegments(geometry, material);
+                        
+
+                        // object.frustumCulled = false
+                        // object.matrixAutoUpdate = false
+
+                        handledObjects.push(mesh)
+
+                        // geometry.setAttribute('position', chunk.vertices)
+
+                        // if (chunk.indices) {
+                        //     geometry.setIndex(chunk.indices)
+                        // }
+
+                        // // const mesh = new THREE.Mesh(geometry, material)
+                        // const material = new three.LineBasicMaterial({
+                        //     color: 0xFF0000
+                        // })
+                        // const lines = new three.LineSegments(geometry, material);
+                        
+                        // // object.frustumCulled = false
+                        // // object.matrixAutoUpdate = false
+                        
+                        // handledObjects.push(lines)
+                    }
+                }   
+
+                this.objects.set(key, handledObjects)
+                
+                // geometry.setAttribute("position", vertices)
+                // instanceBatch?._SetInstanceTransformAttribute(geometry)
+            // const obj = new objConstructor(geometry, material)
+            // obj.frustumCulled = false
+            // obj.matrixAutoUpdate = false
+            // obj.vertices = vertices
+            // return obj
+
+                console.log('!BATCH', batch)
+
+                // for (const obj of objects) {
+                //     handledObjects.push(obj)
+                //     // obj.insertName = insertName
+
+                //     // for (const [key] of this.sceneData.unmappedInserts.entries()) {
+                //     //     if (key.startsWith(`${insertName}__`) || key === insertName) {
+                //     //         this.objects.set(key, {
+                //     //             obj,
+                //     //         })
+                //     //     }
+                //     // }
+                // }
+
+                // console.log('batch', )
+                // this.objects.set(batch.key.blockName, objects)
+
+                // if (key.includes('1 FURN L1$0$A$Cb807f822')) {
+                //     console.log('objects', objects)
+                // }
+            }
+            // for (const batch of block.batches) {
+            //     const objects = new Batch(this, scene, batch, insertName).CreateObjects()
+
+            //     if (insertName.includes('1 FURN L1$0$A$Cb807f822')) {
+            //         console.log('batch', batch)
+            //     }
+
+
+            // }
+        }   
+
         this._Emit("loaded")
 
         if (scene.bounds) {
@@ -515,10 +653,10 @@ export class DxfViewer {
                 //     // console.log('*** position', entity.position)
                 // }    
 
-                const name = `${blockName}${i + 1}`;
+                const name = `${blockName}__${i + 1}`;
 
                 if (entity.vertices) {
-                    positions.set(`${blockName}${i + 1}`, {
+                    positions.set(name, {
                         block,
                         entity: this.sceneData.unmappedInserts.get(name),
                         factor,
@@ -544,46 +682,25 @@ export class DxfViewer {
     _LoadBatch(scene, batch) {
         // console.log('keys', batch.key.blockName)
         const positions = this.GetBatchPositions(batch.key.blockName, scene)
+        // if (batch.key.insertName) {
+        //     const objects = new Batch(this, scene, {
+        //         ...batch,
+        //         positions,
+        //     }, batch.key.insertName).CreateObjects()
 
-        if (batch.key.insertName) {
-            const block = this.blocks.get(batch.key.insertName)
+        //     for (const obj of objects) {
+        //         obj.insertName = batch.key.insertName
 
-            if (!block) {
-                return
-            }
-
-            const objects = new Batch(this, scene, {
-                ...batch,
-                positions,
-            }, batch.key.insertName).CreateObjects()
-
-            for (const obj of objects) {
-                obj.insertName = batch.key.insertName
-
-                // const inserts = this.sceneData.unmappedInserts.entries()
-                // let insert = null
-
-                for (const [key] of this.sceneData.unmappedInserts.entries()) {
-                    const [_, b] = key.split(batch.key.insertName)
-
-                    if (!isNaN(b)) {
-                        console.log('!!!')
-                        this.objects.set(key, {
-                            obj,
-                        })
-                        break;
-                    }
-                }
-
-                // this.scene.add(obj)
-
-                // if (layer) {
-                //     layer.PushObject(obj)
-                // }
-            }
-            
-            // return
-        }
+        //         for (const [key] of this.sceneData.unmappedInserts.entries()) {
+        //             if (key.startsWith(`${batch.key.insertName}__`) || key === batch.key.insertName) {
+        //                 // console.log('key', key)
+        //                 this.objects.set(key, {
+        //                     obj,
+        //                 })
+        //             }
+        //         }
+        //     }
+        // }
 
         if (batch.key.blockName !== null &&
             batch.key.geometryType !== BatchingKey.GeometryType.BLOCK_INSTANCE &&
@@ -949,7 +1066,12 @@ class Batch {
     /** Create scene objects corresponding to batch data.
      * @param instanceBatch {?Batch} Batch with instance transform. Null for non-instanced object.
      */
-    *CreateObjects(instanceBatch = null) {
+    *CreateObjects(instanceBatch = null, bypassBlock) {
+        if (bypassBlock) {
+            yield* this._CreateObjects(instanceBatch)
+            return
+        }
+        
         if (this.key.geometryType === BatchingKey.GeometryType.BLOCK_INSTANCE ||
             this.key.geometryType === BatchingKey.GeometryType.POINT_INSTANCE) {
 

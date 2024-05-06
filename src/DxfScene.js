@@ -131,6 +131,7 @@ export class DxfScene {
         this.fontStyles = new Map()
         /* Indexed by entity handle. */
         this.inserts = new Map()
+        this.insertBlocks = new Map()
         this.bounds = null
         this.pointShapeBlock = null
         this.numBlocksFlattened = 0
@@ -201,15 +202,9 @@ export class DxfScene {
             if (entity.type === "INSERT") {
                 const block = this.blocks.get(entity.name)
 
-                // block.total = block.total ? block.total + 1 : 0;
-
-                // if (block.total) {
-                //     console.log('block.total', block.total)
-                // }
-
                 this.indexes[entity.name] = this.indexes[entity.name] ? this.indexes[entity.name] + 1 : 0;
                 
-                this.unmappedInserts.set(`${entity.name}${this.indexes[entity.name]}`, entity)
+                this.unmappedInserts.set(`${entity.name}__${this.indexes[entity.name]}`, entity)
                 
                 block?.RegisterInsert(entity)
             } else if (entity.type == "DIMENSION") {
@@ -1740,7 +1735,11 @@ export class DxfScene {
     _ProcessInsert(entity, blockCtx = null) {
         const insertName = entity.name
         this.inserts.set(entity.handle, entity)
-        this.indexes[entity.name] = this.indexes[entity.name] ? this.indexes[entity.name] + 1 : 1;    
+        this.indexes[entity.name] = this.indexes[entity.name] ? this.indexes[entity.name] + 1 : 1;  
+        
+        // if (entity.name.includes('1 FURN L1$0$A$Cb807f822')) {
+        //     console.log('!!! FOUND ONE !!!')
+        // }
 
         if (blockCtx) {
             const { origin } = blockCtx
@@ -1756,6 +1755,7 @@ export class DxfScene {
                 console.warn("Unresolved nested block reference: " + entity.name)
                 return
             }
+
             const nestedCtx = blockCtx.NestedBlockContext(block, entity)
             
             block.transform = nestedCtx.transform
@@ -1778,14 +1778,21 @@ export class DxfScene {
                 }
             }
 
-            this.unmappedInserts.set(`${entity.name}${this.indexes[entity.name]}`, {
+            if (entity.name.includes('1 FURN L1$0$A$Cb807f822') || entity.name.includes('DGLM') || entity.name.includes('OUSBY')) {
+                this.insertBlocks.set(entity.name, {
+                    ...block,
+                    vertices
+                })
+            }
+
+            this.unmappedInserts.set(`${entity.name}__${this.indexes[entity.name]}`, {
                 ...entity,
                 vertices,
             })
             return
         }
 
-        this.unmappedInserts.set(`${entity.name}${this.indexes[entity.name]}`, entity)
+        this.unmappedInserts.set(`${entity.name}__${this.indexes[entity.name]}`, entity)
 
         const block = this.blocks.get(entity.name)
 
@@ -2760,6 +2767,7 @@ class Block {
      * @return {Boolean} New flatten flag state.
      */
     SetFlatten() {
+        this.flatten = false
         return false
         // if (!this.HasGeometry()) {
         //     return false
@@ -2895,7 +2903,7 @@ class BlockContext {
         const nestedCtx = new BlockContext(block, BlockContext.Type.NESTED_DEFINITION)
         const nestedTransform = nestedCtx.GetInsertionTransform(entity)
         const ctx = new BlockContext(this.block, BlockContext.Type.NESTED_DEFINITION)
-        ctx.insertName = 'nested'
+        ctx.insertName = entity.name
         ctx.transform = new Matrix3().multiplyMatrices(this.transform, nestedTransform)
         ctx.nestedTransform = nestedTransform
         return ctx
