@@ -407,6 +407,7 @@ export class DxfScene {
             break
         case "ATTRIB":
             this.texts.push({
+                ownerHandle: entity.ownerHandle,
                 text: entity.text,
                 startPoint: entity.startPoint,
                 endPoint: entity.endPoint,
@@ -1051,7 +1052,7 @@ export class DxfScene {
                 color: entity.color,
                 colorIndex: entity.colorIndex
             }
-            this._ProcessInsert(insert, blockCtx)
+            this._ProcessInsert(insert, blockCtx, true)
             return
         }
 
@@ -1517,7 +1518,7 @@ export class DxfScene {
      * @param entity
      * @param blockCtx {?BlockContext} Nested block insert when non-null.
      */
-    _ProcessInsert(entity, blockCtx = null) {
+    _ProcessInsert(entity, blockCtx = null, bypassInserts = false) {
         const insertName = entity.name
         this.inserts.set(entity.handle, entity)
         this.indexes[entity.name] = this.indexes[entity.name] ? this.indexes[entity.name] + 1 : 1;
@@ -1579,26 +1580,27 @@ export class DxfScene {
 
             if (insert) {
                 // Add block, entity and vertcies to insert batches
+                const batches = insert.batches;
+
+                batches[entity.handle] = {
+                    block,
+                    entity,
+                    vertices,
+                }
                 this.allInserts.set(entity.name, {
                     ...insert,
-                    batches: [
-                        ...insert.batches,
-                        {
-                            block,
-                            entity,
-                            vertices,
-                        }
-                    ]
+                    batches,
                 });
             } else {
+                const batches = {}
+
+                batches[entity.handle] = {
+                    block,
+                    entity,
+                    vertices,
+                }
                 this.allInserts.set(entity.name, {
-                    batches: [
-                        {
-                            block,
-                            entity,
-                            vertices,
-                        }
-                    ]
+                    batches,
                 })
             }
 
