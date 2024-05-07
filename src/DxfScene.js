@@ -137,6 +137,7 @@ export class DxfScene {
         this.numBlocksFlattened = 0
         this.numEntitiesFiltered = 0
         this.unmappedInserts = new Map()
+        this.allInserts = new Map()
     }
 
     /** Build the scene from the provided parsed DXF.
@@ -216,26 +217,6 @@ export class DxfScene {
         }
 
         for (const block of this.blocks.values()) {
-            if (!block?.data?.entities) {
-                continue;
-            }
-
-            this.scanEntities(block.data.entities)
-        }
-        
-
-        // for (const block of this.blocks.values()) {
-        //     if (!block?.data?.entities) {
-        //         continue;
-        //     }
-
-        //     for (const entity of block.data.entities) {
-        //         this.scanEntity(entity)
-        //     }
-        //     // block.ResolveReferences(this.blocks)
-        // }
-
-        for (const block of this.blocks.values()) {
             if (block.data.hasOwnProperty("entities")) {
                 const blockCtx = block.DefinitionContext()
                 for (let i = 0; i < block.data.entities.length; i++) {
@@ -295,197 +276,6 @@ export class DxfScene {
         } catch (error) {
             console.log('error', error)
         }
-    }
-
-    extractInstances(entities) {
-        const regex = /\d+/g;
-        const handledInstances = []
-        // const mappingKeys = ['center', 'end', 'location', 'start', 'controlPoints', 'vertices']
-        for (const entity of entities) {
-            const numbers = JSON.stringify(entity).match(regex).map(Number);
-            
-            // const keysPresentOnMappingKeys = mappingKeys.filter(key => entity[key]);
-            // // const entityWithKeysOnly = Object.keys(entity).filter(key => mappingKeys.includes(key));
-            // const handledEntity = {};
-
-            // for (const key of keysPresentOnMappingKeys) {
-            //     handledEntity[key] = entity[key]
-            //     // handledEntity[key] = entity[key]
-            // }
-
-            handledInstances.push([...numbers])
-
-            // handledInstances.push(handledEntity)
-            // console.log('keysPresentOnMappingKeys', keysPresentOnMappingKeys)
-        }
-
-        return [handledInstances.length, ...handledInstances]
-    }
-
-    scanEntities(entities, parentName = '') {
-        // if (entities.length === 1) {
-        //     console.log('just one', entities[0].type)
-        // }
-
-        try {
-            for (const entity of entities) {
-                const entityName = entity.name
-                
-                if (entity.type === 'INSERT') {
-                    if (entityName?.toLowerCase?.()?.includes?.('executive')) {
-                        console.log('found one', entityName)
-                    }
-
-                    if (entityName?.toLowerCase?.()?.includes?.('ousby ch 1')) {
-                        const block = this.blocks.get(entity.name);
-                        const entities = block?.data?.entities;
-
-                        if (!entities) {
-                            continue;
-                        }
-
-                        const extractedInstances = this.extractInstances(entities)
-
-                        // console.log(JSON.stringify(extractedInstances.splice(0, 6)))
-                    }
-
-                    // if(entityName?.includes?.('DGLM')) {
-                    //     const block = this.blocks.get(entity.name);
-    
-                    //     if (!block?.data?.entities) {
-                    //         continue;
-                    //     }
-    
-                    //     console.log('is equal', JSON.stringify(block.data.entities) === JSON.stringify(instance))
-                        
-                    //     for (const entity of block.data.entities) {
-                    //         entity.color = hexToDecimal('#00FF00')
-                    //     }
-                    // }
-    
-                    const block = this.blocks.get(entity.name);
-                    const entities = block?.data?.entities;
-    
-                    if (!entities) {
-                        continue;
-                    }
-    
-                    this.scanEntities(entities, entity.name);
-                }
-    
-                if (parentName) {
-                    const block = this.blocks.get(parentName);
-                    const insertEntities = block?.data?.entities;
-                    let isMatching = false
-
-                    if (!insertEntities) {
-                        continue;
-                    }
-
-                    for (const { color, instance } of instances) {
-                        const instanceTotalSize = instance[0]
-
-                        if (insertEntities.length === instanceTotalSize) {
-                            const extractedInstances = this.extractInstances(insertEntities)
-                            const slicedInstances = extractedInstances.slice(0, 6)
-                            
-                            if (JSON.stringify(slicedInstances) === JSON.stringify(instance)) {
-                                insertEntities.forEach((insertEntity, index) => {
-                                    insertEntity.color = hexToDecimal(color)
-                                });
-                            }
-                            // isMatching = JSON.stringify(insertEntities) === JSON.stringify(instance);
-    
-                            // // console.log(JSON.stringify(insertEntities[0]))
-                            // // console.log(JSON.stringify(instance[0]))
-                            
-                            // if (isMatching) {
-                            //     insertEntities.forEach((insertEntity, index) => {
-                            //         insertEntity.color = hexToDecimal('#FF0000')
-                            //     });
-                            // }
-                        }
-                    }
-
-                    
-
-                    // if (isMatching) {
-                    //     entity.color = hexToDecimal('#FF0000')
-                    // }
-                }
-            }
-        } catch (error) {
-            console.log('error', error)
-        }
-    }
-
-    scanEntity(entity, same = false, insertName = null) {
-        try {
-            const entityName = entity.name
-            let isDLGM = false
-            let isTheSame = false
-
-            // if (entity.type === 'INSERT') {
-            //     this.unmappedInserts[entity.handle] = {
-            //         handle: entity.handle,
-            //         ownerHandle: entity.ownerHandle,
-            //     }
-            // }
-
-            if (!entityName) {
-                return;
-            }
-
-            if (same && insertName) {
-                // this.colorOverrides[insertname] = this.colorOverrides[insertName] ?? hexToDecimal('#FF0000')
-                entity.color = hexToDecimal('#FF0000')
-            }
-
-            if (entityName.includes('DGLM')) {
-                isDLGM = true
-
-                entity.color = hexToDecimal('#FF0000')
-            }
-
-            if (entity.type === 'INSERT') {
-                const block = this.blocks.get(entity.name)
-
-                if (block?.data?.entities) {
-                    for (const entity of block.data.entities) {
-                        this.scanEntity(entity, isDLGM, entity.handle)
-                    }
-                }
-            }
-        } catch (error) {
-            console.log('error', error)
-        }
-
-        return null
-        
-
-        // if (!entityName) {
-        //     return;
-        // }
-
-        // if (entityName.includes('DGLM')) {
-        //     const block = this.blocks.get(entity.name)
-
-        //     isDLGM = true
-
-        //     if (!this.colorOverrides[entity.handle]) {
-        //         this.colorOverrides[entity.handle] = hexToDecimal('#FF0000')
-        //     }
-        // }
-
-        // if (entity.type === 'INSERT') {
-        //     const block = this.blocks.get(entity.name)
-
-        //     if (block?.data?.entities) {
-        //         for (const entity of block.data.entities) {
-        //             this._scanEntity(entity, isDLGM, entity.handle)
-        //         }
-        //     }
-        // }
     }
 
     async _FetchFonts(dxf) {
@@ -562,71 +352,6 @@ export class DxfScene {
             }
         }
     }
-
-    // HandleDXFEntity(entity) {
-    //     let renderEntities
-
-    //     switch (entity.type) {
-    //         case "LINE":
-    //             renderEntities = this._HandleDXFLine(entity)
-    //             break
-    //         case "POLYLINE":
-    //         case "LWPOLYLINE":
-    //             renderEntities = this._DecomposePolyline(entity, blockCtx)
-    //             break
-    //         case "ARC":
-    //             renderEntities = this._DecomposeArc(entity, blockCtx)
-    //             break
-    //         case "CIRCLE":
-    //             renderEntities = this._DecomposeCircle(entity, blockCtx)
-    //             break
-    //         case "ELLIPSE":
-    //             renderEntities = this._DecomposeEllipse(entity, blockCtx)
-    //             break
-    //         case "POINT":
-    //             renderEntities = this._DecomposePoint(entity, blockCtx, parentName)
-    //             break
-    //         case "SPLINE":
-    //             renderEntities = this._DecomposeSpline(entity, blockCtx)
-    //             break
-    //         case "INSERT":
-    //             /* Works with rendering batches without intermediate entities. */
-    //             this._ProcessInsert(entity, blockCtx)
-    //             return
-    //         case "TEXT":
-    //             renderEntities = this._DecomposeText(entity, blockCtx)
-    //             break
-    //         case "MTEXT":
-    //             // this.texts.push({
-    //             //     text: entity.text,
-    //             //     position: entity.position
-    //             // })
-    //             renderEntities = this._DecomposeMText(entity, blockCtx)
-    //             break
-    //         case "3DFACE":
-    //             renderEntities = this._Decompose3DFace(entity, blockCtx)
-    //             break
-    //         case "SOLID":
-    //             renderEntities = this._DecomposeSolid(entity, blockCtx)
-    //             break
-    //         case "DIMENSION":
-    //             renderEntities = this._DecomposeDimension(entity, blockCtx)
-    //             break
-    //         case "ATTRIB":
-    //             this.texts.push({
-    //                 text: entity.text,
-    //                 startPoint: entity.startPoint,
-    //                 endPoint: entity.endPoint,
-    //             })
-    //             renderEntities = this._DecomposeAttribute(entity, blockCtx)
-    //             break
-    //         case "HATCH":
-    //             renderEntities = this._DecomposeHatch(entity, blockCtx)
-    //             break
-    //         default:
-    //             return
-    //         }
-    // }
 
     _ProcessDxfEntity(entity, blockCtx = null, parentName) {
         let renderEntities
@@ -1795,11 +1520,7 @@ export class DxfScene {
     _ProcessInsert(entity, blockCtx = null) {
         const insertName = entity.name
         this.inserts.set(entity.handle, entity)
-        this.indexes[entity.name] = this.indexes[entity.name] ? this.indexes[entity.name] + 1 : 1;  
-        
-        // if (entity.name.includes('1 FURN L1$0$A$Cb807f822')) {
-        //     console.log('!!! FOUND ONE !!!')
-        // }
+        this.indexes[entity.name] = this.indexes[entity.name] ? this.indexes[entity.name] + 1 : 1;
 
         if (blockCtx) {
             const { origin } = blockCtx
@@ -1853,6 +1574,34 @@ export class DxfScene {
                 ...entity,
                 vertices,
             })
+
+            const insert = this.allInserts.get(entity.name)
+
+            if (insert) {
+                // Add block, entity and vertcies to insert batches
+                this.allInserts.set(entity.name, {
+                    ...insert,
+                    batches: [
+                        ...insert.batches,
+                        {
+                            block,
+                            entity,
+                            vertices,
+                        }
+                    ]
+                });
+            } else {
+                this.allInserts.set(entity.name, {
+                    batches: [
+                        {
+                            block,
+                            entity,
+                            vertices,
+                        }
+                    ]
+                })
+            }
+
             return
         }
 
