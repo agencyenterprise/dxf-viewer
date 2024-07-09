@@ -1,3 +1,5 @@
+import THREE from 'three';
+
 /** See TextRenderer.DefaultOptions for default values and documentation. */
 export type TextRendererOptions = {
   curveSubdivision: number;
