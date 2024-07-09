@@ -1,11 +1,12 @@
 {
-    "name": "dxf-viewer",
-    "version": "1.0.31",
+    "name": "@ae-studio/dxf-viewer",
+    "version": "1.0.0",
     "description": "JavaScript DXF file viewer",
     "main": "src/index.js",
+    "types": "src/index.d.ts",
     "author": "Artyom Lebedev<artyom.lebedev@gmail.com>",
     "license": "MPL-2.0",
-    "repository": "https://github.com/vagran/dxf-viewer",
+    "repository": "https://github.com/agencyenterprise/dxf-viewer",
     "type": "module",
     "keywords": [
         "dxf",
