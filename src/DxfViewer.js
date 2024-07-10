@@ -132,6 +132,10 @@ export class DxfViewer {
         return this.parsedDxf
     }
 
+    GetControls() {
+        return this.controls
+    }
+
     SetSize(width, height) {
         this._EnsureRenderer()
 

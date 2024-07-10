@@ -1,4 +1,5 @@
 import THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 /** See TextRenderer.DefaultOptions for default values and documentation. */
 export type TextRendererOptions = {
@@ -71,6 +72,7 @@ export declare class DxfViewer {
   FitView(minX: number, maxX: number, minY: number, maxY: number, padding: number): void;
   GetCamera(): THREE.OrthographicCamera;
   GetCanvas(): HTMLCanvasElement;
+  GetControls(): OrbitControls | null;
   GetLayers(): Iterable<LayerInfo>;
   GetOrigin(): THREE.Vector2;
   GetBounds(): { maxX: number; maxY: number; minX: number; minY: number } | null;
