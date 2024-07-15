@@ -67,6 +67,7 @@ export type EventName =
 export declare class DxfViewer {
   static DefaultOptions: DxfViewerOptions;
   constructor(domContainer: HTMLElement, options: DxfViewerOptions | null);
+  CanvasToSceneCoord(x: number, y: number): THREE.Vector2;
   Clear(): void;
   Destroy(): void;
   FitView(minX: number, maxX: number, minY: number, maxY: number, padding: number): void;
