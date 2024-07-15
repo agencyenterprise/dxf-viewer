@@ -424,6 +424,9 @@ export class DxfScene {
         const batches = []
 
         for (const renderEntity of renderEntities) {
+            if (!parentName) {
+                continue;
+            }
             const batch = this._ProcessEntity(renderEntity, blockCtx, parentName)
 
             batches.push(batch)
