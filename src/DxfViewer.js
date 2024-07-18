@@ -469,6 +469,10 @@ export class DxfViewer {
         return this.bounds
     }
 
+    GetTexts() {
+        return this.sceneData.texts;
+    }
+
     /** Subscribe to the specified event. The following events are defined:
      *  * "loaded" - new scene loaded.
      *  * "cleared" - current scene cleared.
