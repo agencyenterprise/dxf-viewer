@@ -79,6 +79,12 @@ export declare class DxfViewer {
   GetBounds(): { maxX: number; maxY: number; minX: number; minY: number } | null;
   GetRenderer(): THREE.WebGLRenderer | null;
   GetScene(): THREE.Scene;
+  GetTexts(): {
+    endPoint: THREE.Vector3;
+    ownerHandle: string;
+    startPoint: THREE.Vector3;
+    text: string;
+  }[];
   HasRenderer(): boolean;
   Load(params: DxfViewerLoadParams): Promise<void>;
   Render(): void;
