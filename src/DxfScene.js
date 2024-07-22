@@ -414,9 +414,9 @@ export class DxfScene {
             })
             renderEntities = this._DecomposeAttribute(entity, blockCtx)
             break
-        // case "HATCH":
-        //     renderEntities = this._DecomposeHatch(entity, blockCtx)
-        //     break
+        case "HATCH":
+            renderEntities = this._DecomposeHatch(entity, blockCtx)
+            break
         default:
             return
         }
