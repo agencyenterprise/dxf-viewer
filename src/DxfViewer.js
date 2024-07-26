@@ -279,6 +279,8 @@ export class DxfViewer {
                 continue
             }
 
+            const block = sceneData.blocks.get(key);
+
             const handledObjects = []
 
             for (const batch of batches) {
@@ -290,16 +292,51 @@ export class DxfViewer {
                             vertices: chunk.vertices,
                         })
 
+                        object.userData.block = block;
+
                         handledObjects.push(object)
                     }
                 } else {
-                    const object = this.CreateViewerObject({
-                        batch,
-                        indices: null,
-                        vertices: batch.vertices,
-                    })
+                    if (batch.positions.size === 0) {
+                        const object = this.CreateViewerObject({
+                            batch,
+                            indices: null,
+                            vertices: batch.vertices,
+                        })
 
-                    handledObjects.push(object)
+                        object.userData.block = block;
+
+                        handledObjects.push(object)
+
+                        continue;
+                    }
+
+                    const [key, { block: positionBlock }] = Array.from(batch.positions)[0];
+                    const blockBatch = positionBlock.batches[0];
+
+                    if (blockBatch.chunks) {
+                        for (const chunk of blockBatch.chunks) {
+                            const object = this.CreateViewerObject({
+                                batch,
+                                indices: chunk.indices,
+                                vertices: chunk.vertices,
+                            })
+
+                            object.userData.block = block;
+
+                            handledObjects.push(object)
+                        }
+                    } else {
+                        const object = this.CreateViewerObject({
+                            batch,
+                            indices: null,
+                            vertices: blockBatch.vertices,
+                        })
+                        
+                        object.userData.block = block;
+
+                        handledObjects.push(object)
+                    }
                 }
             }
 
