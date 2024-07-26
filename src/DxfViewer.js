@@ -272,7 +272,39 @@ export class DxfViewer {
             }
 
             this.objects.set(key, handledObjects)
-        }   
+        }
+        
+        for (const [key, { batches }] of this.blocks.entries()) {
+            if (this.objects.has(key)) {
+                continue
+            }
+
+            const handledObjects = []
+
+            for (const batch of batches) {
+                if (batch.chunks) {
+                    for (const chunk of batch.chunks) {
+                        const object = this.CreateViewerObject({
+                            batch,
+                            indices: chunk.indices,
+                            vertices: chunk.vertices,
+                        })
+
+                        handledObjects.push(object)
+                    }
+                } else {
+                    const object = this.CreateViewerObject({
+                        batch,
+                        indices: null,
+                        vertices: batch.vertices,
+                    })
+
+                    handledObjects.push(object)
+                }
+            }
+
+            this.objects.set(key, handledObjects)
+        }
 
         this._Emit("loaded")
 
