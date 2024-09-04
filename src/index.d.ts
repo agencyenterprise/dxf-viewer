@@ -79,6 +79,17 @@ export declare class DxfViewer {
   GetBounds(): { maxX: number; maxY: number; minX: number; minY: number } | null;
   GetRenderer(): THREE.WebGLRenderer | null;
   GetScene(): THREE.Scene;
+  GetObjects(): Map<string, THREE.Object3D[]>;
+  GetObjectByName(name: string): THREE.Object3D[];
+  GetBlockByName(name: string): Block | null;
+  GetElementPosition(name: string): THREE.Vector3 | null;
+  GetBlockEntities(name: string): {
+    offset: THREE.Vector2;
+    position: THREE.Vector3;
+    rotation: number;
+    xScale: number;
+    yScale: number;
+  }[];
   GetTexts(): {
     endPoint: THREE.Vector3;
     ownerHandle: string;
@@ -116,3 +127,53 @@ export function RegisterPattern(pattern: Pattern, isMetric: boolean): void;
 
 /** @return {?Pattern} */
 export function LookupPattern(name: string, isMetric: boolean): Pattern | null;
+
+export type Block = {
+  batches: RenderBatch[];
+  bounds: {
+    maxX: number;
+    maxY: number;
+    minX: number;
+    minY: number;
+  }
+  data: {
+    entities: RenderEntity[];
+    handle: string;
+    layer: string;
+    name: string;
+    name2: string;
+    ownerHandle: string;
+    position: THREE.Vector3;
+    xrefPath: string;
+  }
+  flatten: boolean;
+  nestedTransform: THREE.Matrix3;
+  nestedUseCount: number;
+  offset: THREE.Vector2;
+  transform: THREE.Matrix3;
+  useCount: number;
+  verticesCount: number;
+}
+
+export type RenderBatch = {
+  key: BatchingKey;
+  insertName: string;
+  position: RenderEntity[]
+}
+
+export type RenderEntity = {
+  handle: string;
+  layer: string;
+  ownerHandle: string;
+  type: string;
+  vertices: THREE.Vector3[];
+}
+
+export type BatchingKey = {
+  blockName: string;
+  color: number;
+  geometryType: number;
+  insertName: string;
+  layerName: string;
+  lineType: number;
+}

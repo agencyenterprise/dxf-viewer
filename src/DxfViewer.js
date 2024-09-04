@@ -246,7 +246,7 @@ export class DxfViewer {
 
         //XXX line type
 
-        for (const [key, { batches }] of sceneData.insertBlocks.entries()) {
+        for (const [key, { batches }] of sceneData.blocks.entries()) {
             const handledObjects = []
 
             for (const batch of batches) {
@@ -449,6 +449,76 @@ export class DxfViewer {
      */
     GetScene() {
         return this.scene
+    }
+
+    GetObjects() {
+        return this.objects
+    }
+
+    GetObjectByName(name) {
+        return this.objects.get(name) ?? []
+    }
+
+    GetBlockByName(name) {
+        return this.sceneData.blocks.get(name) ?? null
+    }
+
+    GetInsertBlockByHandle(handle) {
+        return this.sceneData.unmappedInserts.get(handle) ?? null
+    }
+
+    GetElementPosition(name) {
+        const block = this.GetBlockByName(name);
+
+        if (!block?.nestedTransform?.elements) {
+            return {
+                x: 0,
+                y: 0,
+            };
+        }
+
+        const originX = this.origin.x;
+        const originY = this.origin.y;
+
+        const x = block.nestedTransform.elements[6];
+        const y = block.nestedTransform.elements[7];
+
+        return {
+            x: -originX + x + block.offset.x,
+            y: -originY + y + block.offset.y,
+        };
+    }
+
+    GetBlockEntities(name) {
+        const block = this.GetBlockByName(name);
+
+        if (!block) {
+            return [];
+        }
+
+        const batches = this.sceneData.allInserts.get(name).batches;
+        const entities = Object.values(batches).map(batch => batch.entity);
+
+        const originX = this.origin.x;
+        const originY = this.origin.y;
+
+        // return entities;
+
+        console.log('entities', entities)
+
+        return entities.map(entity => ({
+            offset: {
+                x: block.offset.x,
+                y: block.offset.y,
+            },
+            position: {
+                x: -originX + entity.position.x,
+                y: -originY + entity.position.y,
+            },
+            rotation: entity.rotation,
+            xScale: entity.xScale,
+            yScale: entity.yScale,
+        }));
     }
 
     /** @return {OrthographicCamera} three.js camera for the viewer. */

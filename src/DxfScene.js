@@ -415,7 +415,8 @@ export class DxfScene {
             renderEntities = this._DecomposeAttribute(entity, blockCtx)
             break
         case "HATCH":
-            renderEntities = this._DecomposeHatch(entity, blockCtx)
+            // renderEntities = this._DecomposeHatch(entity, blockCtx)
+            renderEntities = []
             break
         default:
             return
@@ -1590,6 +1591,7 @@ export class DxfScene {
                     entity,
                     vertices,
                 }
+
                 this.allInserts.set(entity.name, {
                     ...insert,
                     batches,
@@ -1608,6 +1610,28 @@ export class DxfScene {
             }
 
             return
+        } else {
+            const block = this.blocks.get(entity.name)
+
+            if (this.allInserts.has(entity.name)) {
+                this.allInserts.get(entity.name).batches[entity.handle] = {
+                    block,
+                    entity,
+                }
+            } else {
+                this.allInserts.set(entity.name, {
+                    batches: {
+                        [entity.handle]: {
+                            block,
+                            entity,
+                        }
+                    }
+                })
+            }
+            // this.allInserts.set(entity.name, {
+            //     block,
+            //     entity,
+            // })
         }
 
         this.unmappedInserts.set(`${entity.name}__${this.indexes[entity.name]}`, entity)
