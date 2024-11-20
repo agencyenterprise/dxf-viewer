@@ -2708,18 +2708,19 @@ class Block {
    * @return {Boolean} New flatten flag state.
    */
   SetFlatten() {
-    this.flatten = false;
-    return false;
-    // if (!this.HasGeometry()) {
-    //     return false
-    // }
-    // /* Flatten if a block is used once (pure optimization if shares its layer with other
-    //  * geometry) or if total instanced vertices number is less than a threshold (trade some
-    //  * space for draw calls number).
-    //  */
-    // this.flatten = this.useCount === 1 ||
-    //                this.useCount * this.verticesCount <= BLOCK_FLATTENING_VERTICES_THRESHOLD
-    // return this.flatten
+    if (!this.HasGeometry()) {
+      return false;
+    }
+
+    /* Flatten if a block is used once (pure optimization if shares its layer with other
+     * geometry) or if total instanced vertices number is less than a threshold (trade some
+     * space for draw calls number).
+     */
+    this.flatten =
+      this.useCount === 1 ||
+      this.useCount * this.verticesCount <= BLOCK_FLATTENING_VERTICES_THRESHOLD;
+
+    return this.flatten;
   }
 
   /** @return {Boolean} True if has something to draw. */
