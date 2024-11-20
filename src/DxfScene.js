@@ -385,41 +385,41 @@ export class DxfScene {
         /* Works with rendering batches without intermediate entities. */
         this._ProcessInsert(entity, blockCtx);
         return;
-      case 'TEXT':
-        // this.texts.push({
-        //     text: entity.text,
-        //     position: entity.position
-        // })
-        renderEntities = this._DecomposeText(entity, blockCtx);
-        break;
-      case 'MTEXT':
-        // this.texts.push({
-        //     text: entity.text,
-        //     position: entity.position
-        // })
-        renderEntities = this._DecomposeMText(entity, blockCtx);
-        break;
-      case '3DFACE':
-        renderEntities = this._Decompose3DFace(entity, blockCtx);
-        break;
-      case 'SOLID':
-        renderEntities = this._DecomposeSolid(entity, blockCtx);
-        break;
-      case 'DIMENSION':
-        renderEntities = this._DecomposeDimension(entity, blockCtx);
-        break;
-      case 'ATTRIB':
-        this.texts.push({
-          ownerHandle: entity.ownerHandle,
-          text: entity.text,
-          startPoint: entity.startPoint,
-          endPoint: entity.endPoint,
-        });
-        renderEntities = this._DecomposeAttribute(entity, blockCtx);
-        break;
-      case 'HATCH':
-        renderEntities = this._DecomposeHatch(entity, blockCtx);
-        break;
+      // case 'TEXT':
+      //   // this.texts.push({
+      //   //     text: entity.text,
+      //   //     position: entity.position
+      //   // })
+      //   renderEntities = this._DecomposeText(entity, blockCtx);
+      //   break;
+      // case 'MTEXT':
+      //   // this.texts.push({
+      //   //     text: entity.text,
+      //   //     position: entity.position
+      //   // })
+      //   renderEntities = this._DecomposeMText(entity, blockCtx);
+      //   break;
+      // case '3DFACE':
+      //   renderEntities = this._Decompose3DFace(entity, blockCtx);
+      //   break;
+      // case 'SOLID':
+      //   renderEntities = this._DecomposeSolid(entity, blockCtx);
+      //   break;
+      // case 'DIMENSION':
+      //   renderEntities = this._DecomposeDimension(entity, blockCtx);
+      //   break;
+      // case 'ATTRIB':
+      //   this.texts.push({
+      //     ownerHandle: entity.ownerHandle,
+      //     text: entity.text,
+      //     startPoint: entity.startPoint,
+      //     endPoint: entity.endPoint,
+      //   });
+      //   renderEntities = this._DecomposeAttribute(entity, blockCtx);
+      //   break;
+      // case 'HATCH':
+      //   renderEntities = this._DecomposeHatch(entity, blockCtx);
+      //   break;
       default:
         return;
     }
